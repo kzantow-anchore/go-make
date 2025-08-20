@@ -38,11 +38,13 @@ runs:
         path: ${{ github.workspace }}/.tool
         key: ${{ inputs.cache-key-prefix }}-${{ runner.os }}-tool-${{ hashFiles('.binny.yaml') }}
 
-    - run: echo "GITHUB_TOKEN=$GITHUB_TOKEN\nACTIONS_RUNTIME_TOKEN=$ACTIONS_RUNTIME_TOKEN" >> "$GITHUB_ENV"
-      shell: bash
-      env:
-        ACTIONS_RUNTIME_TOKEN: ${{ env.ACTIONS_RUNTIME_TOKEN }}
-        GITHUB_TOKEN: ${{ github.token }}
+    - uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs')
+          fs.appendFileSync(process.env.GITHUB_ENV,
+          `ACTIONS_RUNTIME_TOKEN=${process.env.ACTIONS_RUNTIME_TOKEN}\n`+
+          `GITHUB_TOKEN=${{github.token}}\n`)
 
     - name: Build cache key for test fixtures
       id: unit-fixtures
