@@ -105,13 +105,20 @@ func Test_renderUploadFiles(t *testing.T) {
 					"testdata/pr_run_artifacts.json",
 				},
 			},
-			expected: []string{"pr_run.json", "pr_run_artifacts.json"},
+			expected: []string{"testdata/pr_run.json", "testdata/pr_run_artifacts.json"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			renderUploadFiles(tt.baseDir, &tt.options)
+			baseDir, err := filepath.Abs(tt.baseDir)
+			require.NoError(t, err)
+			for i := range tt.expected {
+				tt.expected[i] = filepath.Join(baseDir, tt.expected[i])
+			}
+
+			files := renderUploadFiles(tt.baseDir, &tt.options)
+			require.EqualElements(t, tt.expected, files)
 		})
 	}
 }

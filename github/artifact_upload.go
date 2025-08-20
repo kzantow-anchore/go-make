@@ -73,11 +73,11 @@ try {
 }
 
 func renderUploadFiles(baseDir string, opts *UploadArtifactOption) []string {
-	out := append([]string(nil), opts.Files...)
-	absBaseDir := lang.Return(filepath.Abs(baseDir))
+	var out []string
+	baseDir = lang.Return(filepath.Abs(baseDir))
 	for _, f := range opts.Files {
 		if !filepath.IsAbs(f) {
-			f = path.Join(absBaseDir, f)
+			f = path.Join(baseDir, f)
 		}
 		out = append(out, f)
 	}
@@ -87,11 +87,11 @@ func renderUploadFiles(baseDir string, opts *UploadArtifactOption) []string {
 	if opts.Glob != "" {
 		glob := opts.Glob
 		if !filepath.IsAbs(glob) {
-			glob = path.Join(baseDir, glob)
+			glob = filepath.Join(baseDir, glob)
 		}
 		for _, f := range file.FindAll(glob) {
 			if !filepath.IsAbs(f) {
-				f = filepath.Join(absBaseDir, f)
+				f = filepath.Join(baseDir, f)
 			}
 			out = append(out, f)
 		}
