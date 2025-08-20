@@ -6,5 +6,5 @@ import (
 )
 
 func Run(js string, args ...run.Option) string {
-	return script.Run("node", run.Args("-e", js, "--input-type=module", "--"), run.Options(args...))
+	return script.Run("node", run.Args("-e", js, "--input-type=commonjs", "--"), run.Options(args...))
 }

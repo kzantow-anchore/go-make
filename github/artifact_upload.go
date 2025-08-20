@@ -48,7 +48,7 @@ func (a Api) UploadArtifactDir(baseDir string, opts UploadArtifactOption) (int64
 
 	// `npm install -g @actions/artifact` is available, but import fails at: $(npm -g root)/@actions/artifact
 	id := node.Run(`
-import { DefaultArtifactClient } from '@actions/artifact'
+const { DefaultArtifactClient } = require('@actions/artifact')
 const artifact = new DefaultArtifactClient()
 const archiveName = process.argv[1]
 const baseDir = process.argv[2]
@@ -61,14 +61,13 @@ if (retentionDays !== "") {
 		opts = { retentionDays: intVal }
 	}
 }
-try {
-	const { id } = await artifact.uploadArtifact(archiveName, files, baseDir, opts)
+Promise.all([artifact.uploadArtifact(archiveName, files, baseDir, opts).then(({ id }) => {
 	console.log(id)
-} catch (err) {
+}).catch(err => {
 	console.error(err)
 	process.exit(1)
-}
-`, run.Args(artifactName, baseDir, strconv.Itoa(int(opts.RetentionDays))),
+})])`,
+		run.Args(artifactName, baseDir, strconv.Itoa(int(opts.RetentionDays))),
 		run.Args(files...),
 		run.Env("ACTIONS_RUNTIME_TOKEN", a.Token))
 
