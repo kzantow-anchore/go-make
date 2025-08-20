@@ -1,7 +1,6 @@
 package github
 
 import (
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -61,9 +60,9 @@ func (a Api) UploadArtifactDir(baseDir string, opts UploadArtifactOption) int64 
 
 	log.Debug("uploading dir: %s name: %s with files: %v", baseDir, artifactName, opts.Files)
 
-	fullActionsArtifactPath := path.Join(script.Run("npm -g root"), "@actions", "artifact")
+	// `npm install -g @actions/artifact` is available, but import fails at: $(npm -g root)/@actions/artifact
 	id := node.Run(`
-import { DefaultArtifactClient } from '`+fullActionsArtifactPath+`'
+import { DefaultArtifactClient } from '@actions/artifact'
 const artifact = new DefaultArtifactClient()
 const archiveName = process.argv[1]
 const baseDir = process.argv[2]
@@ -94,14 +93,13 @@ try {
 func ensureActionsArtifactInstalled() {
 	if !isActionsArtifactInstalled() {
 		if nil != lang.Catch(func() {
-			script.Run("npm install -g @actions/artifact@latest")
-			script.Run("npm install -g @actions/artifact@latest-err-not-found")
+			script.Run("npm install @actions/artifact@latest")
 		}) {
-			script.Run("npm install -g @actions/artifact@" + knownActionsArtifactVersion)
+			script.Run("npm install @actions/artifact@" + knownActionsArtifactVersion)
 		}
 	}
 }
 
 func isActionsArtifactInstalled() bool {
-	return strings.Contains(script.Run("npm list -g @actions/artifact", run.Quiet(), run.NoFail()), "@actions/artifact")
+	return strings.Contains(script.Run("npm list @actions/artifact", run.Quiet(), run.NoFail()), "@actions/artifact")
 }
