@@ -41,7 +41,7 @@ runs:
     - run: echo "GITHUB_TOKEN=$GITHUB_TOKEN\nACTIONS_RUNTIME_TOKEN=$ACTIONS_RUNTIME_TOKEN" >> "$GITHUB_ENV"
       shell: bash
       env:
-        ACTIONS_RUNTIME_TOKEN: ${{ secrets.ACTIONS_RUNTIME_TOKEN || env.ACTIONS_RUNTIME_TOKEN }}
+        ACTIONS_RUNTIME_TOKEN: ${{ env.ACTIONS_RUNTIME_TOKEN }}
         GITHUB_TOKEN: ${{ github.token }}
 
     - name: Build cache key for test fixtures
