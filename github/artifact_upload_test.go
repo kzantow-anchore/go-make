@@ -39,10 +39,11 @@ func Test_UploadDownload(t *testing.T) {
 			p := Payload() // tests run in workflow in github
 
 			api := NewClient(Owner("testorg"), Repo("testrepo"))
-			artifactId := api.UploadArtifactDir("testdata", UploadArtifactOption{
+			artifactId, err := api.UploadArtifactDir("testdata", UploadArtifactOption{
 				ArtifactName: tt.artifact,
 				Glob:         tt.files,
 			})
+			require.NoError(t, err)
 			require.True(t, artifactId != 0)
 
 			tmpdir := t.TempDir()
@@ -69,4 +70,48 @@ func Test_ensureActionsArtifactNpmPackageInstalled(t *testing.T) {
 	ensureActionsArtifactInstalled()
 
 	log.Log("actions/artifact out: %s", script.Run("npm list -g @actions/artifact", run.NoFail()))
+}
+
+func Test_renderUploadFiles(t *testing.T) {
+	tests := []struct {
+		name     string
+		baseDir  string
+		options  UploadArtifactOption
+		expected []string
+	}{
+		{
+			name:    "direct",
+			baseDir: "testdata",
+			options: UploadArtifactOption{
+				Files: []string{
+					"pr_run_artifacts.json",
+				},
+			},
+			expected: []string{"pr_run_artifacts.json"},
+		},
+		{
+			name:    "glob",
+			baseDir: "testdata",
+			options: UploadArtifactOption{
+				Glob: "**/empty.json",
+			},
+			expected: []string{"empty.json"},
+		},
+		{
+			name: "both",
+			options: UploadArtifactOption{
+				Glob: "**/*_run.json",
+				Files: []string{
+					"testdata/pr_run_artifacts.json",
+				},
+			},
+			expected: []string{"pr_run.json", "pr_run_artifacts.json"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			renderUploadFiles(tt.baseDir, &tt.options)
+		})
+	}
 }

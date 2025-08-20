@@ -1,6 +1,8 @@
 package github
 
 import (
+	"fmt"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -18,7 +20,6 @@ const (
 )
 
 type UploadArtifactOption struct {
-	BaseDir       string
 	ArtifactName  string
 	RetentionDays uint
 	Glob          string
@@ -29,36 +30,21 @@ type UploadArtifactOption struct {
 // attached to the currently running workflow. Optionally limit the files by
 // including ArtifactFiles or ArtifactGlob, which can be relative to the baseDir.
 // To specify a custom name, use ArtifactName
-func (a Api) UploadArtifactDir(baseDir string, opts UploadArtifactOption) int64 {
-	baseDir = lang.Return(filepath.Abs(baseDir))
+func (a Api) UploadArtifactDir(baseDir string, opts UploadArtifactOption) (int64, error) {
 	artifactName := opts.ArtifactName
 	if artifactName == "" {
 		artifactName = filepath.Base(baseDir)
 	}
-	for i, f := range opts.Files {
-		if !filepath.IsAbs(f) {
-			opts.Files[i] = filepath.Join(baseDir, f)
-		}
-	}
-	if len(opts.Files) == 0 && opts.Glob == "" {
-		opts.Glob = "**/*" // default to include all files in the baseDir
-	}
-	if opts.Glob != "" {
-		glob := opts.Glob
-		if !filepath.IsAbs(glob) {
-			glob = filepath.Join(baseDir, glob)
-		}
-		for i, f := range file.FindAll(glob) {
-			if !filepath.IsAbs(f) {
-				opts.Files[i] = filepath.Join(baseDir, f)
-			}
-		}
+
+	files := renderUploadFiles(baseDir, &opts)
+	if len(files) == 0 {
+		return 0, fmt.Errorf("no files to upload dir: %v with opts: %#v", baseDir, opts)
 	}
 
 	// Github actions runners may not have the @actions/artifact package installed, so install it if needed
 	ensureActionsArtifactInstalled()
 
-	log.Debug("uploading dir: %s name: %s with files: %v", baseDir, artifactName, opts.Files)
+	log.Debug("uploading dir: %s name: %s with files: %v", baseDir, artifactName, files)
 
 	// `npm install -g @actions/artifact` is available, but import fails at: $(npm -g root)/@actions/artifact
 	id := node.Run(`
@@ -82,10 +68,33 @@ try {
 	console.error(err)
 	process.exit(1)
 }
-`, run.Args(artifactName, baseDir, strconv.Itoa(int(opts.RetentionDays))), run.Args(opts.Files...))
-	out, err := strconv.ParseInt(id, 10, 64)
-	if err != nil {
-		panic(err)
+`, run.Args(artifactName, baseDir, strconv.Itoa(int(opts.RetentionDays))), run.Args(files...))
+	return strconv.ParseInt(id, 10, 64)
+}
+
+func renderUploadFiles(baseDir string, opts *UploadArtifactOption) []string {
+	out := append([]string(nil), opts.Files...)
+	absBaseDir := lang.Return(filepath.Abs(baseDir))
+	for _, f := range opts.Files {
+		if !filepath.IsAbs(f) {
+			f = path.Join(absBaseDir, f)
+		}
+		out = append(out, f)
+	}
+	if len(opts.Files) == 0 && opts.Glob == "" {
+		opts.Glob = "**/*" // default to include all files in the baseDir
+	}
+	if opts.Glob != "" {
+		glob := opts.Glob
+		if !filepath.IsAbs(glob) {
+			glob = path.Join(baseDir, glob)
+		}
+		for _, f := range file.FindAll(glob) {
+			if !filepath.IsAbs(f) {
+				f = filepath.Join(absBaseDir, f)
+			}
+			out = append(out, f)
+		}
 	}
 	return out
 }
