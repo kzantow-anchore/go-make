@@ -68,7 +68,10 @@ try {
 	console.error(err)
 	process.exit(1)
 }
-`, run.Args(artifactName, baseDir, strconv.Itoa(int(opts.RetentionDays))), run.Args(files...))
+`, run.Args(artifactName, baseDir, strconv.Itoa(int(opts.RetentionDays))),
+		run.Args(files...),
+		run.Env("ACTIONS_RUNTIME_TOKEN", a.Token))
+
 	return strconv.ParseInt(id, 10, 64)
 }
 
