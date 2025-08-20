@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -56,7 +57,7 @@ func init() {
 	_, _ = fmt.Fprintf(os.Stderr, "initializing config with env: %v\n", stringify(env))
 
 	fullEnv := map[string]string{}
-	f, err := os.Open("full_env.json")
+	f, err := os.Open(filepath.Join(Env("GITHUB_WORKSPACE", ""), "full_env.json"))
 	if err != nil {
 		err = json.NewDecoder(f).Decode(&fullEnv)
 	} else {
