@@ -34,9 +34,10 @@ var (
 )
 
 func init() {
+	const maxLen = 10
 	trunc := func(s string) string {
-		if len(s) > 20 {
-			return s[:20] + "..."
+		if len(s) > 10 {
+			return s[:10] + "..."
 		}
 		return s
 	}
