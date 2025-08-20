@@ -40,7 +40,10 @@ func BinaryRelease(toolPath string, spec ReleaseSpec) error {
 	log.Log("Downloading: %v", url)
 
 	buf := bytes.Buffer{}
-	lang.Return(Fetch(url, Writer(&buf)))
+	_, err := Fetch(url, Writer(&buf))
+	if err != nil {
+		return err
+	}
 	contents := buf.Bytes()
 	contents = getArchiveFileContents(contents, filepath.Base(toolPath))
 	if contents == nil {
