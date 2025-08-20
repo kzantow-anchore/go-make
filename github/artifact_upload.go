@@ -70,9 +70,9 @@ const retentionDays = process.argv[3]
 const files = process.argv.slice(4)
 let opts = {}
 if (retentionDays !== "") {
-	retentionDays = parseInt(retentionDays)
-	if (retentionDays > 0) {
-		opts = { retentionDays: retentionDays }
+	const intVal = parseInt(retentionDays)
+	if (intVal) {
+		opts = { retentionDays: intVal }
 	}
 }
 try {
