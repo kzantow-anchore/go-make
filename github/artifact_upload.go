@@ -61,7 +61,7 @@ func (a Api) UploadArtifactDir(baseDir string, opts UploadArtifactOption) int64 
 	log.Debug("uploading dir: %s name: %s with files: %v", baseDir, artifactName, opts.Files)
 
 	id := node.Run(`
-const { DefaultArtifactClient } = require('@actions/artifact')
+import { DefaultArtifactClient } from '@actions/artifact'
 const artifact = new DefaultArtifactClient()
 const archiveName = process.argv[1]
 const baseDir = process.argv[2]
