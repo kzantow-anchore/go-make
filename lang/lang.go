@@ -16,6 +16,12 @@ func Default[T comparable](value T, defaultValue T) T {
 	return value
 }
 
+// Continue returns the return value regardless of any error, logging any error instead of panicking
+func Continue[T any](t T, e error) T {
+	log.Error(e)
+	return t
+}
+
 // Return returns the provided value, panicking if a non-nil error is provided
 func Return[T any](t T, e error) T {
 	Throw(e)

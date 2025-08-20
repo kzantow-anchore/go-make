@@ -1,0 +1,97 @@
+package github
+
+import (
+	"path/filepath"
+	"strconv"
+	"strings"
+
+	"github.com/anchore/go-make/file"
+	"github.com/anchore/go-make/lang"
+	"github.com/anchore/go-make/log"
+	"github.com/anchore/go-make/node"
+	"github.com/anchore/go-make/run"
+	"github.com/anchore/go-make/script"
+)
+
+const (
+	knownActionsArtifactVersion = "2.3.2"
+)
+
+type UploadArtifactOption struct {
+	BaseDir       string
+	ArtifactName  string
+	RetentionDays uint
+	Glob          string
+	Files         []string
+}
+
+// UploadArtifactDir will compress all files in the basedir into an artifact
+// attached to the currently running workflow. Optionally limit the files by
+// including ArtifactFiles or ArtifactGlob, which can be relative to the baseDir.
+// To specify a custom name, use ArtifactName
+func (a Api) UploadArtifactDir(baseDir string, opts UploadArtifactOption) int64 {
+	baseDir = lang.Return(filepath.Abs(baseDir))
+	artifactName := opts.ArtifactName
+	if artifactName == "" {
+		artifactName = filepath.Base(baseDir)
+	}
+	for i, f := range opts.Files {
+		if !filepath.IsAbs(f) {
+			opts.Files[i] = filepath.Join(baseDir, f)
+		}
+	}
+	if len(opts.Files) == 0 && opts.Glob == "" {
+		opts.Glob = "**/*" // default to include all files in the baseDir
+	}
+	if opts.Glob != "" {
+		glob := opts.Glob
+		if !filepath.IsAbs(glob) {
+			glob = filepath.Join(baseDir, glob)
+		}
+		for i, f := range file.FindAll(glob) {
+			if !filepath.IsAbs(f) {
+				opts.Files[i] = filepath.Join(baseDir, f)
+			}
+		}
+	}
+
+	// Github actions runners may not have the @actions/artifact package installed, so install it if needed
+	ensureActionsArtifactInstalled()
+
+	log.Debug("uploading dir: %s name: %s with files: %v", baseDir, artifactName, opts.Files)
+
+	id := node.Run(`
+const { DefaultArtifactClient } = require('@actions/artifact')
+const artifact = new DefaultArtifactClient()
+const archiveName = process.argv[1]
+const baseDir = process.argv[2]
+const retentionDays = process.argv[3]
+const files = process.argv.slice(4)
+let opts = {}
+if (retentionDays !== "") {
+	opts = { retentionDays: parseInt(retentionDays) }
+}
+const { id } = await artifact.uploadArtifact(archiveName, files, baseDir, opts)
+console.log(id)
+`, run.Args(artifactName, baseDir, strconv.Itoa(int(opts.RetentionDays))), run.Args(opts.Files...))
+	out, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
+
+func ensureActionsArtifactInstalled() {
+	if !isActionsArtifactInstalled() {
+		if nil != lang.Catch(func() {
+			script.Run("npm install -g @actions/artifact@latest")
+			script.Run("npm install -g @actions/artifact@latest-err-not-found")
+		}) {
+			script.Run("npm install -g @actions/artifact@" + knownActionsArtifactVersion)
+		}
+	}
+}
+
+func isActionsArtifactInstalled() bool {
+	return strings.Contains(script.Run("npm list -g @actions/artifact", run.Quiet(), run.NoFail()), "@actions/artifact")
+}

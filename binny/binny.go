@@ -220,8 +220,6 @@ func BuildFromGoSource(file string, module, entrypoint, version string, opts ...
 	log.Log("Building: %s@%s entrypoint: %s", module, version, entrypoint)
 	git.InClone("https://"+module, version, func() {
 		// go build <options> -o file <entrypoint>
-		opts = append([]run.Option{run.Args("build"), run.Stderr(io.Discard)}, opts...)
-		opts = append(opts, run.Args("-o", file, "./"+entrypoint))
-		run.Command("go", opts...)
+		run.Command("go", run.Args("build"), run.Stderr(io.Discard), run.Options(opts...), run.Args("-o", file, "./"+entrypoint))
 	})
 }

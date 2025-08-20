@@ -29,6 +29,7 @@ func Revision() string {
 func InClone(repo, ref string, fn func()) {
 	file.InTempDir(func() {
 		run.Command("git", run.Args("clone", "--depth", "1", "--branch", ref, repo, "."), run.Stderr(io.Discard))
+		file.LogWorkdir()
 		fn()
 	})
 }

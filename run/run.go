@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/anchore/go-make/color"
-	"github.com/anchore/go-make/config"
 	"github.com/anchore/go-make/lang"
 	"github.com/anchore/go-make/log"
 )
@@ -71,6 +70,19 @@ func Args(args ...string) Option {
 	}
 }
 
+// Options allows multiple options to be passed as one Option
+func Options(options ...Option) Option {
+	return func(ctx context.Context, cmd *exec.Cmd) error {
+		for _, opt := range options {
+			err := opt(ctx, cmd)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
 // Write outputs stdout to a file
 func Write(path string) Option {
 	fh, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
@@ -91,6 +103,17 @@ func Quiet() Option {
 		cfg, _ := ctx.Value(runConfig{}).(*runConfig)
 		if cfg != nil {
 			cfg.quiet = true
+		}
+		return nil
+	}
+}
+
+// NoFail logs at Debug level instead of panicking
+func NoFail() Option {
+	return func(ctx context.Context, cmd *exec.Cmd) error {
+		cfg, _ := ctx.Value(runConfig{}).(*runConfig)
+		if cfg != nil {
+			cfg.noFail = true
 		}
 		return nil
 	}
@@ -151,7 +174,7 @@ func LDFlags(flags ...string) Option {
 // runCommand executes the given command, returning any error information
 func runCommand(cmd string, opts ...Option) (int, error) {
 	// create the command, this will look it up based on path:
-	c := exec.CommandContext(config.Context, cmd)
+	c := exec.CommandContext(Context(), cmd)
 
 	env := os.Environ()
 	var dropped []string
@@ -170,7 +193,7 @@ func runCommand(cmd string, opts ...Option) (int, error) {
 	}
 
 	cfg := runConfig{}
-	ctx := context.WithValue(config.Context, runConfig{}, &cfg)
+	ctx := context.WithValue(Context(), runConfig{}, &cfg)
 
 	// finally, apply all the options to modify the command
 	for _, opt := range opts {
@@ -193,10 +216,18 @@ func runCommand(cmd string, opts ...Option) (int, error) {
 
 	// execute
 	err := c.Run()
-	if err != nil || (c.ProcessState != nil && c.ProcessState.ExitCode() > 0) {
-		return c.ProcessState.ExitCode(), err
+	exitCode := 0
+	if c.ProcessState != nil {
+		exitCode = c.ProcessState.ExitCode()
 	}
-	return 0, nil
+	if err != nil || exitCode > 0 {
+		if cfg.noFail {
+			log.Debug("error executing: '%v %v' exit code: %v: %v", displayPath(cmd), strings.Join(args, " "), exitCode, err)
+		} else {
+			return exitCode, err
+		}
+	}
+	return exitCode, nil
 }
 
 func skipEnvVar(s string) bool {
@@ -250,5 +281,6 @@ func printArgs(args []Option) string {
 }
 
 type runConfig struct {
-	quiet bool
+	quiet  bool
+	noFail bool
 }

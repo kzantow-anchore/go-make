@@ -1,33 +1,31 @@
 package fetch
 
 import (
-	"context"
 	"io"
 	"net/http"
 	"net/url"
 
-	"github.com/anchore/go-make/config"
 	"github.com/anchore/go-make/lang"
+	"github.com/anchore/go-make/log"
 )
 
-type Option func(context.Context, *http.Request) error
+type Option func(*fetchOptions) error
 
 func Headers(headers map[string]string) Option {
-	return func(_ context.Context, req *http.Request) error {
-		if req.Header == nil {
-			req.Header = make(http.Header)
+	return func(opts *fetchOptions) error {
+		if opts.req.Header == nil {
+			opts.req.Header = make(http.Header)
 		}
 		for k, v := range headers {
-			req.Header[k] = append(req.Header[k], v)
+			opts.req.Header[k] = append(opts.req.Header[k], v)
 		}
 		return nil
 	}
 }
 
 func Writer(writer io.Writer) Option {
-	return func(ctx context.Context, _ *http.Request) error {
-		w, _ := ctx.Value(fetchWriter{}).(*io.Writer)
-		*w = writer
+	return func(opts *fetchOptions) error {
+		opts.writer = writer
 		return nil
 	}
 }
@@ -40,22 +38,34 @@ func Fetch(urlString string, options ...Option) (contents string, statusCode int
 		URL:    u,
 	}
 
-	var writer io.Writer
-	ctx := context.WithValue(config.Context, fetchWriter{}, &writer)
+	client := *http.DefaultClient
 
-	for _, option := range options {
-		lang.Throw(option(ctx, req))
+	opts := fetchOptions{
+		writer: nil,
+		client: &client,
+		req:    req,
 	}
 
-	rsp := lang.Return(http.DefaultClient.Do(req)) //nolint:bodyclose
+	for _, option := range options {
+		lang.Throw(option(&opts))
+	}
+
+	log.Log("fetch: %s", urlString)
+	log.Debug("  └─ headers: %v", req.Header)
+
+	rsp := lang.Return(client.Do(req)) //nolint:bodyclose
 	defer lang.Close(rsp.Body, urlString)
 
-	if writer != nil {
-		_ = lang.Return(io.Copy(writer, rsp.Body))
+	if opts.writer != nil {
+		_ = lang.Return(io.Copy(opts.writer, rsp.Body))
 		return "", rsp.StatusCode, rsp.Status
 	}
 
 	return string(lang.Return(io.ReadAll(rsp.Body))), rsp.StatusCode, rsp.Status
 }
 
-type fetchWriter struct{}
+type fetchOptions struct {
+	writer io.Writer
+	client *http.Client
+	req    *http.Request
+}
