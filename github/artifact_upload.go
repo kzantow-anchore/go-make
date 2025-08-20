@@ -69,10 +69,18 @@ const retentionDays = process.argv[3]
 const files = process.argv.slice(4)
 let opts = {}
 if (retentionDays !== "") {
-	opts = { retentionDays: parseInt(retentionDays) }
+	retentionDays = parseInt(retentionDays)
+	if (retentionDays > 0) {
+		opts = { retentionDays: retentionDays }
+	}
 }
-const { id } = await artifact.uploadArtifact(archiveName, files, baseDir, opts)
-console.log(id)
+try {
+	const { id } = await artifact.uploadArtifact(archiveName, files, baseDir, opts)
+	console.log(id)
+} catch (err) {
+	console.error(err)
+	process.exit(1)
+}
 `, run.Args(artifactName, baseDir, strconv.Itoa(int(opts.RetentionDays))), run.Args(opts.Files...))
 	out, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
