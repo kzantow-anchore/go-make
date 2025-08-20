@@ -16,6 +16,7 @@ import (
 // https://docs.github.com/en/actions/reference/workflows-and-actions/variables#default-environment-variables
 
 type Event struct {
+	Token     string `env:"GITHUB_TOKEN"`
 	Type      string `env:"GITHUB_EVENT_NAME"`
 	Ref       string `env:"GITHUB_REF"`
 	Actor     string `env:"GITHUB_ACTOR"`

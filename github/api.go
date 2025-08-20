@@ -43,7 +43,13 @@ type Api struct {
 func NewClient(param ...Param) Api {
 	token := config.Env("GITHUB_TOKEN", "")
 	if token == "" {
-		token = script.Run("gh auth token")
+		p := Payload()
+		token = p.Token
+		if token == "" {
+			// run.Command will not install from binny, this will always use the provided `gh` command on the runner
+			// token = lang.Continue(run.Command("gh", run.Args("auth", "token")))
+			token = script.Run("gh auth token")
+		}
 	}
 	a := Api{
 		Token:   token,
@@ -129,7 +135,7 @@ func (a Api) extractArtifact(artifactID int64, targetDir string) {
 	// https://docs.github.com/en/rest/actions/artifacts?apiVersion=2022-11-28#download-an-artifact
 	// https://api.github.com/repos/OWNER/REPO/actions/artifacts/ARTIFACT_ID/ARCHIVE_FORMAT
 	// archive_format must be zip
-	fetch.Fetch(fmt.Sprintf(a.BaseURL+"/repos/%s/%s/actions/artifacts/%v/zip", a.Owner, a.Repo, artifactID), a.headers(), fetch.Writer(f))
+	lang.Return(fetch.Fetch(fmt.Sprintf(a.BaseURL+"/repos/%s/%s/actions/artifacts/%v/zip", a.Owner, a.Repo, artifactID), a.headers(), fetch.Writer(f)))
 	file.LogWorkdir()
 	s := lang.Return(f.Stat())
 	zipReader := lang.Return(zip.NewReader(f, s.Size()))
@@ -170,12 +176,9 @@ func (a Api) headers() fetch.Option {
 }
 
 func get[T any](a Api, url string, args ...any) T {
-	contents, statusCode, statusLine := fetch.Fetch(a.BaseURL+fmt.Sprintf(url, args...), a.headers())
-	if statusCode >= 300 || contents == "" {
-		panic(fmt.Errorf("failed to fetch artifacts, status: %v %v, contents: %s", statusCode, statusLine, contents))
-	}
+	contents := lang.Return(fetch.Fetch(a.BaseURL+fmt.Sprintf(url, args...), a.headers()))
 	if config.Debug {
-		log.Debug("fetch result %v: %s", statusCode, log.FormatJSON(contents))
+		log.Debug("fetch result %v: %v", url, log.FormatJSON(contents))
 	}
 	var out T
 	lang.Throw(json.NewDecoder(strings.NewReader(contents)).Decode(&out))

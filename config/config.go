@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+	"os"
 	"runtime"
 	"strconv"
 )
@@ -30,6 +32,7 @@ var (
 )
 
 func init() {
+	_, _ = fmt.Fprintf(os.Stderr, "initializing config with env: %v\n", os.Environ())
 	Trace, _ = strconv.ParseBool(Env("TRACE", "false"))
 	Debug, _ = strconv.ParseBool(Env("DEBUG",
 		Env("ACTIONS_RUNNER_DEBUG", strconv.FormatBool(Trace))))

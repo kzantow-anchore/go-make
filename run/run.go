@@ -21,7 +21,7 @@ type Option func(context.Context, *exec.Cmd) error
 // Command runs a command, waits until completion, and returns stdout.
 // The first argument is the path to the binary and DOES NOT shell-split.
 // When not captured, stderr is output to os.Stderr and returned as part of the error text.
-func Command(cmd string, opts ...Option) string {
+func Command(cmd string, opts ...Option) (string, error) {
 	// by default, only capture output without duplicating it to logs
 	opts = append([]Option{func(_ context.Context, cmd *exec.Cmd) error {
 		cmd.Stdout = io.Discard
@@ -53,13 +53,12 @@ func Command(cmd string, opts ...Option) string {
 		if stderr.Len() > 0 {
 			fullStdOut += "\nSTDERR:\n" + stderr.String()
 		}
-		panic(
-			lang.NewStackTraceError(fmt.Errorf("error executing: '%s %s': %w", cmd, printArgs(opts), err)).
-				WithExitCode(exitCode).
-				WithLog(fullStdOut))
+		err = lang.NewStackTraceError(fmt.Errorf("error executing: '%s %s': %w", cmd, printArgs(opts), err)).
+			WithExitCode(exitCode).
+			WithLog(fullStdOut)
 	}
 
-	return strings.TrimSpace(stdout.String())
+	return strings.TrimSpace(stdout.String()), err
 }
 
 // Args appends args to the command

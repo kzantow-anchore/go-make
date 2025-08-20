@@ -40,14 +40,11 @@ func BinaryRelease(toolPath string, spec ReleaseSpec) error {
 	log.Log("Downloading: %v", url)
 
 	buf := bytes.Buffer{}
-	_, code, status := Fetch(url, Writer(&buf))
+	lang.Return(Fetch(url, Writer(&buf)))
 	contents := buf.Bytes()
-	if code > 300 || len(contents) == 0 {
-		return fmt.Errorf("error downloading %v: http %v %v", url, code, status)
-	}
 	contents = getArchiveFileContents(contents, filepath.Base(toolPath))
 	if contents == nil {
-		return fmt.Errorf("unable to read archive from downloading %v: http %v %v", url, code, status)
+		return fmt.Errorf("unable to read archive from: %v", url)
 	}
 	dir := filepath.Dir(toolPath)
 	if !file.Exists(dir) {

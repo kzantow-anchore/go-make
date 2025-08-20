@@ -28,12 +28,6 @@ func Return[T any](t T, e error) T {
 	return t
 }
 
-// Return2 returns the provided values, panicking if a non-nil error is provided
-func Return2[T1, T2 any](t1 T1, t2 T2, e error) (T1, T2) {
-	Throw(e)
-	return t1, t2
-}
-
 // List returns a slice containing all the provided values, removing any nil or "empty" values
 func List[T any](values ...T) []T {
 	for i := 0; i < len(values); i++ {

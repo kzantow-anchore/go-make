@@ -1,6 +1,7 @@
 package fetch
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -30,7 +31,7 @@ func Writer(writer io.Writer) Option {
 	}
 }
 
-func Fetch(urlString string, options ...Option) (contents string, statusCode int, statusLine string) {
+func Fetch(urlString string, options ...Option) (contents string, err error) {
 	u := lang.Return(url.Parse(urlString))
 
 	req := &http.Request{
@@ -56,12 +57,17 @@ func Fetch(urlString string, options ...Option) (contents string, statusCode int
 	rsp := lang.Return(client.Do(req)) //nolint:bodyclose
 	defer lang.Close(rsp.Body, urlString)
 
-	if opts.writer != nil {
-		_ = lang.Return(io.Copy(opts.writer, rsp.Body))
-		return "", rsp.StatusCode, rsp.Status
+	// TODO: add a StatusCheck option
+	if rsp.StatusCode >= 300 {
+		err = lang.NewStackTraceError(fmt.Errorf("error: %v '%v' fetching: %v", rsp.StatusCode, rsp.Status, urlString))
 	}
 
-	return string(lang.Return(io.ReadAll(rsp.Body))), rsp.StatusCode, rsp.Status
+	if opts.writer != nil {
+		_ = lang.Return(io.Copy(opts.writer, rsp.Body))
+		return "", err
+	}
+
+	return string(lang.Return(io.ReadAll(rsp.Body))), err
 }
 
 type fetchOptions struct {
