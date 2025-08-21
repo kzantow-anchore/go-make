@@ -47,7 +47,7 @@ runs:
         script: |
           const fs = require('fs')
           const f = process.env.GITHUB_WORKSPACE + "/full_env.json"
-          console.log("Writing full env to ", f, with env:", JSON.stringify(process.env))
+          console.log("Writing full env to ", f, "with env:", JSON.stringify(process.env))
           fs.appendFileSync(f, JSON.stringify(process.env))
           fs.appendFileSync(process.env.GITHUB_ENV,
           `ACTIONS_RUNTIME_TOKEN=${process.env.ACTIONS_RUNTIME_TOKEN}\n`+
