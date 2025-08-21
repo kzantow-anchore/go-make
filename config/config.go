@@ -57,7 +57,8 @@ func init() {
 	_, _ = fmt.Fprintf(os.Stderr, "initializing config with env: %v\n", stringify(env))
 
 	fullEnv := map[string]string{}
-	f, err := os.Open(filepath.Join(Env("GITHUB_WORKSPACE", ""), "full_env.json"))
+	filePath := filepath.Join(Env("GITHUB_WORKSPACE", ""), "full_env.json")
+	f, err := os.Open(filePath)
 	if err != nil {
 		err = json.NewDecoder(f).Decode(&fullEnv)
 	} else {
@@ -69,7 +70,7 @@ func init() {
 	if err != nil {
 		_, _ = os.Stderr.WriteString("ERROR: " + err.Error() + "\n")
 	}
-	_, _ = fmt.Fprintf(os.Stderr, "initializing config with full_env.json: %v\n", stringify(fullEnv))
+	_, _ = fmt.Fprintf(os.Stderr, "initializing config from %v with full_env.json: %v\n", filePath, stringify(fullEnv))
 	Trace, _ = strconv.ParseBool(Env("TRACE", "false"))
 	Debug, _ = strconv.ParseBool(Env("DEBUG",
 		Env("ACTIONS_RUNNER_DEBUG", strconv.FormatBool(Trace))))
