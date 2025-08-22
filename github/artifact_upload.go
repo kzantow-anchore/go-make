@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/anchore/go-make/config"
 	"github.com/anchore/go-make/file"
 	"github.com/anchore/go-make/lang"
 	"github.com/anchore/go-make/log"
@@ -47,6 +48,8 @@ func (a Api) UploadArtifactDir(baseDir string, opts UploadArtifactOption) (int64
 
 	log.Debug("uploading dir: %s name: %s with files: %v", baseDir, artifactName, files)
 
+	envFile := filepath.Join(config.Env("HOME", config.Env("USERPROFILE", lang.Continue(os.UserHomeDir()))), ".bootstrap_actions_env")
+
 	// `npm install -g @actions/artifact` is available, but import fails at: $(npm -g root)/@actions/artifact
 	id := node.Run(`
 const { DefaultArtifactClient } = require('@actions/artifact')
@@ -68,7 +71,8 @@ Promise.all([artifact.uploadArtifact(archiveName, files, baseDir, opts).then(({ 
 	console.error(err)
 	process.exit(1)
 })])`,
-		run.Args(os.ExpandEnv("--env-file=$HOME/.bootstrap_actions_env"), "--"),
+		run.Args(os.ExpandEnv("--env-file="+envFile), "--",
+			os.ExpandEnv(fmt.Sprintf("GITHUB_ACTIONS_ARTIFACT_NAME=%s", artifactName)), "--"),
 		run.Args(artifactName, baseDir, strconv.Itoa(int(opts.RetentionDays))),
 		run.Args(files...),
 		run.Env("ACTIONS_RUNTIME_TOKEN", a.Token))
