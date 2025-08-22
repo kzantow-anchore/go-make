@@ -2,6 +2,7 @@ package github
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -67,6 +68,7 @@ Promise.all([artifact.uploadArtifact(archiveName, files, baseDir, opts).then(({ 
 	console.error(err)
 	process.exit(1)
 })])`,
+		run.Args(os.ExpandEnv("--env-file=$HOME/.bootstrap_actions_env"), "--"),
 		run.Args(artifactName, baseDir, strconv.Itoa(int(opts.RetentionDays))),
 		run.Args(files...),
 		run.Env("ACTIONS_RUNTIME_TOKEN", a.Token))

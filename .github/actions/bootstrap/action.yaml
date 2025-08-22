@@ -38,20 +38,15 @@ runs:
         path: ${{ github.workspace }}/.tool
         key: ${{ inputs.cache-key-prefix }}-${{ runner.os }}-tool-${{ hashFiles('.binny.yaml') }}
 
-    - uses: actions/setup-node@v4
-      with:
-        node-version: '22.x'
-
     - uses: actions/github-script@v7
       with:
         script: |
           const fs = require('fs')
-          const f = process.env.GITHUB_WORKSPACE + "/full_env.json"
-          console.log("Writing full env to ", f, "with env:", JSON.stringify(process.env))
-          fs.appendFileSync(f, JSON.stringify(process.env))
-          fs.appendFileSync(process.env.GITHUB_ENV,
-          `ACTIONS_RUNTIME_TOKEN=${process.env.ACTIONS_RUNTIME_TOKEN}\n`+
-          `GITHUB_TOKEN=${{github.token}}\n`)
+          const env = { GITHUB_TOKEN: "${{github.token}}" }
+          Object.keys(process.env).filter(k => k.startsWith("ACTIONS_")).forEach(k => env[k] = process.env[k])
+          const f = `${process.env.HOME}/.bootstrap_actions_env`
+          console.log(`writing env to '${f}' with env keys: ${Object.keys(env).sort()}`)
+          Object.entries(env).forEach(([k, v]) => { fs.appendFileSync(f, `${k}="${v.replaceAll("\\","\\\\").replaceAll('"','\\"').replaceAll("\n","\\n")}"\n`) })
 
     - name: Build cache key for test fixtures
       id: unit-fixtures
