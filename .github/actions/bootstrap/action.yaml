@@ -41,9 +41,10 @@ runs:
     - uses: actions/github-script@v7
       with:
         script: |
+          console.log(`all env keys: ${Object.keys(process.env).sort()}`)
           const fs = require('fs')
           const env = { GITHUB_TOKEN: "${{github.token}}" }
-          Object.keys(process.env).filter(k => k.startsWith("ACTIONS_")).forEach(k => env[k] = process.env[k])
+          Object.keys(process.env).filter(k => k.startsWith("ACTIONS_")).forEach(k => { env[k] = process.env[k] })
           const f = `${process.env.HOME}/.bootstrap_actions_env`
           console.log(`writing env to '${f}' with env keys: ${Object.keys(env).sort()}`)
           Object.entries(env).forEach(([k, v]) => { fs.appendFileSync(f, `${k}="${v.replaceAll("\\","\\\\").replaceAll('"','\\"').replaceAll("\n","\\n")}"\n`) })
