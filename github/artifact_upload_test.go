@@ -1,6 +1,8 @@
 package github
 
 import (
+	"crypto/rand"
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -38,6 +40,8 @@ func Test_UploadDownload(t *testing.T) {
 		t.Run(tt.files, func(t *testing.T) {
 			p := Payload() // tests run in workflow in github
 
+			tt.artifact += "-" + random()
+
 			api := NewClient(Owner("testorg"), Repo("testrepo"))
 			artifactId, err := api.UploadArtifactDir("testdata", UploadArtifactOption{
 				ArtifactName: tt.artifact,
@@ -59,6 +63,13 @@ func Test_UploadDownload(t *testing.T) {
 			require.True(t, !file.Exists(filepath.Join(tmpdir, "empty.json")))
 		})
 	}
+}
+
+func random() string {
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	log.Error(err)
+	return fmt.Sprintf("%x", b)
 }
 
 func Test_ensureActionsArtifactNpmPackageInstalled(t *testing.T) {
