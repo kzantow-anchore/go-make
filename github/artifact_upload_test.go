@@ -42,7 +42,7 @@ func Test_UploadDownload(t *testing.T) {
 
 			tt.artifact += "-" + random()
 
-			api := NewClient(Owner("testorg"), Repo("testrepo"))
+			api := NewClient(Owner(p.Owner), Repo(p.Repo))
 			artifactId, err := api.UploadArtifactDir("testdata", UploadArtifactOption{
 				ArtifactName: tt.artifact,
 				Glob:         tt.files,

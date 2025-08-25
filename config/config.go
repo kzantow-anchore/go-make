@@ -1,8 +1,10 @@
 package config
 
 import (
+	"os"
 	"runtime"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -31,8 +33,12 @@ var (
 
 func init() {
 	Trace, _ = strconv.ParseBool(Env("TRACE", "false"))
-	Debug, _ = strconv.ParseBool(Env("DEBUG",
-		Env("ACTIONS_RUNNER_DEBUG", strconv.FormatBool(Trace))))
+	Debug, _ = strconv.ParseBool(Env("DEBUG", strconv.FormatBool(runnerDebug() || Trace)))
 	CI, _ = strconv.ParseBool(Env("CI", "false"))
 	Cleanup = !Debug && !CI
+}
+
+func runnerDebug() bool {
+	debug := os.Getenv("DEBUG")
+	return debug == "1" || strings.EqualFold(debug, "true")
 }
