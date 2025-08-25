@@ -118,6 +118,7 @@ func listMatchingFiles(baseDir string, opts *UploadArtifactOption) []string {
 }
 
 func ensureActionsArtifactInstalled(path string) {
+	file.EnsureDir(path)
 	file.InDir(path, func() {
 		if !isActionsArtifactInstalled() {
 			if nil != lang.Catch(func() {
