@@ -70,8 +70,10 @@ if (retentionDays !== "") {
 		opts = { retentionDays: intVal }
 	}
 }
+const stdoutWrite = process.stdout.write
+process.stdout.write = process.stderr.write
 Promise.all([artifact.uploadArtifact(archiveName, files, baseDir, opts).then(({ id }) => {
-	console.log(id)
+	stdoutWrite(id)
 }).catch(err => {
 	console.error(err)
 	process.exit(1)
