@@ -77,8 +77,7 @@ Promise.all([artifact.uploadArtifact(archiveName, files, baseDir, opts).then(({ 
 	process.exit(1)
 })])`,
 		run.Env(nodePathEnv, nodeModulesPath),
-		run.Args(os.ExpandEnv("--env-file="+envFile()), "--",
-			os.ExpandEnv(fmt.Sprintf("GITHUB_ACTIONS_ARTIFACT_NAME=%s", artifactName)), "--"),
+		run.Args("--input-type=commonjs", os.ExpandEnv("--env-file="+envFile()), "--"),
 		run.Args(artifactName, baseDir, strconv.Itoa(int(opts.RetentionDays))),
 		run.Args(files...))
 

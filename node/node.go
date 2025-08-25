@@ -6,5 +6,5 @@ import (
 )
 
 func Run(js string, args ...run.Option) string {
-	return gomake.Run("node", run.Args("-e", js, "--input-type=commonjs", "--"), run.Options(args...))
+	return gomake.Run("node", run.Args("-e", js), run.Options(args...))
 }
