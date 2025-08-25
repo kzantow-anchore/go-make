@@ -8,13 +8,14 @@ import (
 	"strconv"
 	"strings"
 
+	. "github.com/anchore/go-make"
 	"github.com/anchore/go-make/config"
 	"github.com/anchore/go-make/file"
 	"github.com/anchore/go-make/lang"
 	"github.com/anchore/go-make/log"
 	"github.com/anchore/go-make/node"
 	"github.com/anchore/go-make/run"
-	"github.com/anchore/go-make/script"
+	"github.com/anchore/go-make/template"
 )
 
 const (
@@ -33,24 +34,28 @@ type UploadArtifactOption struct {
 // including ArtifactFiles or ArtifactGlob, which can be relative to the baseDir.
 // To specify a custom name, use ArtifactName
 func (a Api) UploadArtifactDir(baseDir string, opts UploadArtifactOption) (int64, error) {
+	// Github actions runners may not have the @actions/artifact package installed, so install it if needed.
+	// by installing in the tool directory, we get caching for free
+	toolDir := filepath.Join(template.Render(config.ToolDir), ".node")
+	ensureActionsArtifactInstalled(toolDir)
+	nodeModulesPath := filepath.Join(toolDir, "node_modules")
+	const nodePathEnv = "NODE_PATH"
+	if os.Getenv(nodePathEnv) != "" {
+		nodeModulesPath += string(os.PathListSeparator) + os.Getenv(nodePathEnv)
+	}
+
 	artifactName := opts.ArtifactName
 	if artifactName == "" {
 		artifactName = filepath.Base(baseDir)
 	}
 
-	files := renderUploadFiles(baseDir, &opts)
+	files := listMatchingFiles(baseDir, &opts)
 	if len(files) == 0 {
 		return 0, fmt.Errorf("no files to upload dir: %v with opts: %#v", baseDir, opts)
 	}
 
-	// Github actions runners may not have the @actions/artifact package installed, so install it if needed
-	ensureActionsArtifactInstalled()
-
 	log.Debug("uploading dir: %s name: %s with files: %v", baseDir, artifactName, files)
 
-	envFile := filepath.Join(config.Env("HOME", config.Env("USERPROFILE", lang.Continue(os.UserHomeDir()))), ".bootstrap_actions_env")
-
-	// `npm install -g @actions/artifact` is available, but import fails at: $(npm -g root)/@actions/artifact
 	id := node.Run(`
 const { DefaultArtifactClient } = require('@actions/artifact')
 const artifact = new DefaultArtifactClient()
@@ -71,16 +76,21 @@ Promise.all([artifact.uploadArtifact(archiveName, files, baseDir, opts).then(({ 
 	console.error(err)
 	process.exit(1)
 })])`,
-		run.Args(os.ExpandEnv("--env-file="+envFile), "--",
+		run.Env(nodePathEnv, nodeModulesPath),
+		run.Args(os.ExpandEnv("--env-file="+envFile()), "--",
 			os.ExpandEnv(fmt.Sprintf("GITHUB_ACTIONS_ARTIFACT_NAME=%s", artifactName)), "--"),
 		run.Args(artifactName, baseDir, strconv.Itoa(int(opts.RetentionDays))),
-		run.Args(files...),
-		run.Env("ACTIONS_RUNTIME_TOKEN", a.Token))
+		run.Args(files...))
 
 	return strconv.ParseInt(id, 10, 64)
 }
 
-func renderUploadFiles(baseDir string, opts *UploadArtifactOption) []string {
+// envFile is written by the boostrap action to make the required environment variables available to bash scripts, we have captured these in a JS action
+func envFile() string {
+	return filepath.Join(config.Env("HOME", config.Env("USERPROFILE", lang.Continue(os.UserHomeDir()))), ".bootstrap_actions_env")
+}
+
+func listMatchingFiles(baseDir string, opts *UploadArtifactOption) []string {
 	var out []string
 	baseDir = lang.Return(filepath.Abs(baseDir))
 	for _, f := range opts.Files {
@@ -107,16 +117,18 @@ func renderUploadFiles(baseDir string, opts *UploadArtifactOption) []string {
 	return out
 }
 
-func ensureActionsArtifactInstalled() {
-	if !isActionsArtifactInstalled() {
-		if nil != lang.Catch(func() {
-			script.Run("npm install @actions/artifact@latest")
-		}) {
-			script.Run("npm install @actions/artifact@" + knownActionsArtifactVersion)
+func ensureActionsArtifactInstalled(path string) {
+	file.InDir(path, func() {
+		if !isActionsArtifactInstalled() {
+			if nil != lang.Catch(func() {
+				Run("npm install @actions/artifact@latest")
+			}) {
+				Run("npm install @actions/artifact@" + knownActionsArtifactVersion)
+			}
 		}
-	}
+	})
 }
 
 func isActionsArtifactInstalled() bool {
-	return strings.Contains(script.Run("npm list @actions/artifact", run.Quiet(), run.NoFail()), "@actions/artifact")
+	return strings.Contains(Run("npm list @actions/artifact", run.Quiet(), run.NoFail()), "@actions/artifact")
 }

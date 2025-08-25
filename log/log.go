@@ -19,6 +19,10 @@ var Debug = func(format string, args ...any) {}
 
 var Trace = func(format string, args ...any) {}
 
+var Warn = func(format string, args ...any) {
+	Log(color.Yellow(format), args...)
+}
+
 // Error logs any non-nil error passed
 var Error = func(err error, args ...any) {
 	if err != nil {

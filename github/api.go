@@ -8,17 +8,18 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
 
+	. "github.com/anchore/go-make"
 	"github.com/anchore/go-make/color"
 	"github.com/anchore/go-make/config"
 	"github.com/anchore/go-make/fetch"
 	"github.com/anchore/go-make/file"
 	"github.com/anchore/go-make/lang"
 	"github.com/anchore/go-make/log"
-	"github.com/anchore/go-make/script"
 )
 
 type Option func(Api)
@@ -43,13 +44,19 @@ type Api struct {
 func NewClient(param ...Param) Api {
 	token := config.Env("GITHUB_TOKEN", "")
 	if token == "" {
-		p := Payload()
-		token = p.Token
-		if token == "" {
-			// run.Command will not install from binny, this will always use the provided `gh` command on the runner
-			// token = lang.Continue(run.Command("gh", run.Args("auth", "token")))
-			token = script.Run("gh auth token")
+		if config.CI {
+			token = authTokenFromEnvFile(token)
+			if token == "" {
+				log.Warn("ensure actions environment is set up in CI environment, this should be done automatically by the bootstrap action")
+
+				p := Payload()
+				token = p.Token
+			}
 		}
+	}
+	if token == "" {
+		// run.Command will not install from binny, this will always use the provided `gh` command on the runner
+		token = Run("gh auth token")
 	}
 	a := Api{
 		Token:   token,
@@ -58,16 +65,33 @@ func NewClient(param ...Param) Api {
 		Repo:    config.Env("GITHUB_REPO", ""),
 	}
 	for _, p := range param {
-		switch parts := strings.Split(p(), "="); parts[0] {
+		switch parts := strings.SplitN(p(), "=", 2); parts[0] {
 		case "owner":
 			a.Owner = parts[1]
 		case "repo":
 			a.Repo = parts[1]
 		case "actor":
 			a.Actor = parts[1]
+		case "token":
+			a.Token = parts[1]
 		}
 	}
 	return a
+}
+
+func authTokenFromEnvFile(token string) string {
+	f, err := os.Open(envFile())
+	if err != nil {
+		log.Log("unable to read env file: %v: %v", envFile(), err)
+	}
+	if f != nil {
+		defer lang.Close(f, envFile())
+		submatch := regexp.MustCompile(`GITHUB_TOKEN="([^"]+)"`).FindStringSubmatch(string(lang.Continue(io.ReadAll(f))))
+		if len(submatch) > 1 {
+			token = submatch[1]
+		}
+	}
+	return token
 }
 
 // ListWorkflowRuns returns the workflow runs for the given criteria

@@ -1,4 +1,4 @@
-package script
+package gomake
 
 import (
 	"fmt"
@@ -134,7 +134,11 @@ func runTaskFile(tasks ...Task) {
 		},
 	)
 
-	t.Run(os.Args[1:]...)
+	args := os.Args[1:]
+	if len(args) == 0 {
+		args = append(args, "help")
+	}
+	t.Run(args...)
 }
 
 type taskRunner struct {
@@ -216,7 +220,7 @@ func (t *taskRunner) findByLabel(name string) []*Task {
 }
 
 func (t *taskRunner) Makefile() {
-	buildCmdDir := strings.TrimLeft(strings.TrimPrefix(file.Cwd(), RepoRoot()), `\/`)
+	buildCmdDir := strings.TrimLeft(strings.TrimPrefix(file.Cwd(), RootDir()), `\/`)
 	for _, t := range t.tasks {
 		fmt.Printf(".PHONY: %s\n", t.Name)
 		fmt.Printf("%s:\n", t.Name)

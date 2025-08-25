@@ -4,12 +4,12 @@ import (
 	"path/filepath"
 	"testing"
 
+	. "github.com/anchore/go-make"
 	"github.com/anchore/go-make/config"
 	"github.com/anchore/go-make/file"
 	"github.com/anchore/go-make/log"
 	"github.com/anchore/go-make/require"
 	"github.com/anchore/go-make/run"
-	"github.com/anchore/go-make/script"
 )
 
 func Test_UploadDownload(t *testing.T) {
@@ -67,9 +67,12 @@ func Test_ensureActionsArtifactNpmPackageInstalled(t *testing.T) {
 		return
 	}
 
-	ensureActionsArtifactInstalled()
+	testDir := t.TempDir()
+	ensureActionsArtifactInstalled(testDir)
 
-	log.Log("actions/artifact out: %s", script.Run("npm list -g @actions/artifact", run.NoFail()))
+	file.InDir(testDir, func() {
+		log.Log("actions/artifact out: %s", Run("npm list -g @actions/artifact", run.NoFail()))
+	})
 }
 
 func Test_renderUploadFiles(t *testing.T) {
@@ -117,7 +120,7 @@ func Test_renderUploadFiles(t *testing.T) {
 				tt.expected[i] = filepath.Join(baseDir, tt.expected[i])
 			}
 
-			files := renderUploadFiles(tt.baseDir, &tt.options)
+			files := listMatchingFiles(tt.baseDir, &tt.options)
 			require.EqualElements(t, tt.expected, files)
 		})
 	}

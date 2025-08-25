@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/anchore/go-make/color"
+	"github.com/anchore/go-make/config"
 	"github.com/anchore/go-make/lang"
 	"github.com/anchore/go-make/log"
 )
@@ -26,7 +27,7 @@ func Command(cmd string, opts ...Option) (string, error) {
 	opts = append([]Option{func(_ context.Context, cmd *exec.Cmd) error {
 		cmd.Stdout = io.Discard
 		cmd.Stderr = os.Stderr
-		cmd.Stdin = os.Stdin
+		// cmd.Stdin = os.Stdin
 		return nil
 	}}, opts...)
 
@@ -240,6 +241,10 @@ func skipEnvVar(s string) bool {
 }
 
 func displayPath(cmd string) string {
+	if config.Debug {
+		return auxParent(cmd)
+	}
+
 	wd, err := os.Getwd()
 	if err != nil {
 		return auxParent(cmd)
@@ -250,11 +255,17 @@ func displayPath(cmd string) string {
 		return auxParent(cmd)
 	}
 
-	relPath, err := filepath.Rel(absWd, cmd)
-	if err != nil {
-		return auxParent(cmd)
+	if strings.HasPrefix(cmd, absWd) {
+		relPath, err := filepath.Rel(absWd, cmd)
+		if err != nil {
+			return auxParent(cmd)
+		}
+
+		return auxParent(relPath)
 	}
-	return auxParent(relPath)
+
+	// this is probably an absolute path to a system binary, just show the base command
+	return filepath.Base(cmd)
 }
 
 func auxParent(path string) string {

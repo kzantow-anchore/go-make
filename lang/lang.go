@@ -7,13 +7,15 @@ import (
 	"github.com/anchore/go-make/log"
 )
 
-// Default returns the first value that does not equal the type's default value
-func Default[T comparable](value T, defaultValue T) T {
+// Default returns the first value that is set (the first value does not equal the type's zero value)
+func Default[T comparable](values ...T) T {
 	var def T
-	if value == def {
-		return defaultValue
+	for _, v := range values {
+		if v != def {
+			return v
+		}
 	}
-	return value
+	return def
 }
 
 // Continue returns the return value regardless of any error, logging any error instead of panicking
