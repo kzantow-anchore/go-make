@@ -26,10 +26,10 @@ func Tasks(options ...Option) Task {
 	return Task{
 		Name:        cfg.Name,
 		Description: fmt.Sprintf("run %s tests", cfg.Name),
-		RunsOn:      List("test"),
+		RunsOn:      Deps("test"),
 		Run: func() {
 			start := time.Now()
-			args := List("test")
+			args := Deps("test")
 			if cfg.Verbose {
 				args = append(args, "-v")
 			}

@@ -96,7 +96,9 @@ func IsDir(dir string) bool {
 }
 
 // EnsureDir checks if the directory exists. create if not, including any subdirectories needed
-func EnsureDir(dir string) {
+// and returns the absolute path to the directory
+func EnsureDir(dir string) string {
+	dir = lang.Return(filepath.Abs(dir))
 	s, err := os.Stat(dir)
 	if errors.Is(err, os.ErrNotExist) {
 		lang.Throw(os.MkdirAll(dir, 0o755))
@@ -106,6 +108,7 @@ func EnsureDir(dir string) {
 		panic(fmt.Errorf("path '%s' is not a directory", dir))
 	}
 	lang.Throw(err)
+	return dir
 }
 
 // IsRegular indicates the provided file exists and is a regular file, not a directory or symlink

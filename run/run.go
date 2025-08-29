@@ -7,13 +7,16 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/anchore/go-make/color"
 	"github.com/anchore/go-make/config"
 	"github.com/anchore/go-make/lang"
 	"github.com/anchore/go-make/log"
+	"github.com/anchore/go-make/stream"
 )
 
 // Option is used to alter the command used in Exec calls
@@ -40,7 +43,7 @@ func Command(cmd string, opts ...Option) (string, error) {
 		}
 		// if the user isn't capturing stderr, we print to stderr by default and don't need to duplicate this in errors
 		if cmd.Stderr != os.Stderr {
-			cmd.Stderr = TeeWriter(cmd.Stderr, &stderr)
+			cmd.Stderr = stream.Tee(cmd.Stderr, &stderr)
 		}
 		return nil
 	})
@@ -70,6 +73,13 @@ func Args(args ...string) Option {
 	}
 }
 
+func InDir(dir string) Option {
+	return func(_ context.Context, cmd *exec.Cmd) error {
+		cmd.Dir = dir
+		return nil
+	}
+}
+
 // Options allows multiple options to be passed as one Option
 func Options(options ...Option) Option {
 	return func(ctx context.Context, cmd *exec.Cmd) error {
@@ -89,7 +99,7 @@ func Write(path string) Option {
 	defer lang.Close(fh, path)
 	lang.Throw(err)
 	return func(_ context.Context, cmd *exec.Cmd) error {
-		cmd.Stdout = TeeWriter(cmd.Stdout, fh)
+		cmd.Stdout = stream.Tee(cmd.Stdout, fh)
 		return nil
 	}
 }
@@ -214,8 +224,27 @@ func runCommand(cmd string, opts ...Option) (int, error) {
 	// print out c.Env -- GOROOT vs GOBIN
 	log.Trace("ENV: %v", c.Env)
 
+	// forward process end signals
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		for sig := range signals {
+			// SIGABRT is sent when the process ends normally, so we don't wait further
+			if sig == syscall.SIGABRT {
+				break
+			}
+			if c.Process != nil {
+				log.Error(c.Process.Signal(sig))
+			}
+		}
+	}()
+
 	// execute
 	err := c.Run()
+
+	// this will cause the signal listener to proceed and stop waiting on other signals
+	signals <- syscall.SIGABRT
+
 	exitCode := 0
 	if c.ProcessState != nil {
 		exitCode = c.ProcessState.ExitCode()

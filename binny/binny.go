@@ -27,7 +27,7 @@ import (
 const CMD = "binny"
 
 var (
-	binnyManaged    = readBinnyYamlVersions(lang.Continue(os.Open(file.FindParent(template.Render(config.RootDir), ".binny.yaml"))))
+	binnyManaged    = readRootBinnyYaml()
 	defaultVersions = map[string]string{}
 	defaultContents []byte
 	installed       = map[string]string{}
@@ -163,6 +163,16 @@ func installBinny(binnyPath, version string) {
 	}
 
 	installed["binny"] = binnyPath
+}
+
+func readRootBinnyYaml() map[string]string {
+	rootDir := template.Render(config.RootDir)
+	binnyYaml := file.FindParent(rootDir, ".binny.yaml")
+	if binnyYaml == "" {
+		log.Debug("no .binny.yaml found in %v or any parent directory", rootDir)
+		return map[string]string{}
+	}
+	return readBinnyYamlVersions(lang.Return(os.Open(binnyYaml)))
 }
 
 func readBinnyYamlVersions(binnyConfig io.Reader) map[string]string {
