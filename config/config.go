@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"runtime"
 	"strconv"
@@ -40,12 +39,6 @@ func init() {
 }
 
 func runnerDebug() bool {
-	_, _ = fmt.Fprintf(os.Stderr, "runner env: %v", os.Environ())
-	for _, key := range []string{"DEBUG", "RUNNER_DEBUG"} {
-		debug := os.Getenv(key)
-		if debug == "1" || strings.EqualFold(debug, "true") {
-			return true
-		}
-	}
-	return false
+	debug := os.Getenv("RUNNER_DEBUG")
+	return debug == "1" || strings.EqualFold(debug, "true")
 }
