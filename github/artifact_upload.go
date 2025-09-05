@@ -82,7 +82,8 @@ Promise.all([artifact.uploadArtifact(archiveName, files, baseDir, opts).then(({ 
 		run.Env(nodePathEnv, nodeModulesPath),
 		run.Args("--input-type=commonjs", os.ExpandEnv("--env-file="+envFile()), "--"),
 		run.Args(artifactName, baseDir, strconv.Itoa(int(opts.RetentionDays))),
-		run.Args(files...))
+		run.Args(files...),
+		run.Quiet())
 
 	return strconv.ParseInt(id, 10, 64)
 }

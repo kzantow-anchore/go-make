@@ -5,6 +5,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/anchore/go-make/log"
 )
 
 var (
@@ -39,6 +41,12 @@ func init() {
 }
 
 func runnerDebug() bool {
-	debug := os.Getenv("DEBUG")
-	return debug == "1" || strings.EqualFold(debug, "true")
+	log.Log("runner env: %v", os.Environ())
+	for _, key := range []string{"DEBUG", "RUNNER_DEBUG"} {
+		debug := os.Getenv(key)
+		if debug == "1" || strings.EqualFold(debug, "true") {
+			return true
+		}
+	}
+	return false
 }
