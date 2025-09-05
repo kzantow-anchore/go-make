@@ -108,12 +108,14 @@ func Write(path string) Option {
 // Quiet logs at Debug level instead of Log level
 func Quiet() Option {
 	return func(ctx context.Context, cmd *exec.Cmd) error {
-		if cmd.Stderr == os.Stderr {
-			cmd.Stderr = io.Discard
-		}
-		cfg, _ := ctx.Value(runConfig{}).(*runConfig)
-		if cfg != nil {
-			cfg.quiet = true
+		if !config.Debug {
+			if cmd.Stderr == os.Stderr {
+				cmd.Stderr = io.Discard
+			}
+			cfg, _ := ctx.Value(runConfig{}).(*runConfig)
+			if cfg != nil {
+				cfg.quiet = true
+			}
 		}
 		return nil
 	}
