@@ -9,6 +9,7 @@ import (
 	. "github.com/anchore/go-make"
 	"github.com/anchore/go-make/config"
 	"github.com/anchore/go-make/file"
+	"github.com/anchore/go-make/git"
 	"github.com/anchore/go-make/log"
 	"github.com/anchore/go-make/require"
 	"github.com/anchore/go-make/run"
@@ -39,6 +40,11 @@ func Test_UploadDownload(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.files, func(t *testing.T) {
 			p := Payload() // tests run in workflow in github
+
+			log.Log("repo info: %v", map[string]string{
+				"p.SHA":        p.SHA,
+				"git.Revision": git.Revision(),
+			})
 
 			tt.artifact += "-" + random()
 
