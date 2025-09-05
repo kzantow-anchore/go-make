@@ -12,7 +12,11 @@ import (
 var Prefix = ""
 
 var Log = func(format string, args ...any) {
-	_, _ = fmt.Fprintf(os.Stderr, Prefix+template.Render(format)+"\n", args...)
+	if len(args) == 0 {
+		_, _ = os.Stderr.WriteString(Prefix + template.Render(format) + "\n")
+	} else {
+		_, _ = fmt.Fprintf(os.Stderr, Prefix+template.Render(format)+"\n", args...)
+	}
 }
 
 var Debug = func(format string, args ...any) {}

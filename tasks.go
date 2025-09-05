@@ -55,12 +55,11 @@ func (t Task) RunOn(tasks ...string) Task {
 // as per the Task behavior declared above
 func Makefile(tasks ...Task) {
 	if config.Debug {
-		run.PeriodicStackTraces(30 * time.Second)
+		run.PeriodicStackTraces(run.Backoff(30 * time.Second))
 	}
 	runTaskFile(tasks...)
 }
 
-//nolint:funlen
 func runTaskFile(tasks ...Task) {
 	defer lang.HandleErrors()
 

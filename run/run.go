@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/anchore/go-make/color"
 	"github.com/anchore/go-make/config"
@@ -30,7 +31,7 @@ func Command(cmd string, opts ...Option) (string, error) {
 	opts = append([]Option{func(_ context.Context, cmd *exec.Cmd) error {
 		cmd.Stdout = io.Discard
 		cmd.Stderr = os.Stderr
-		// cmd.Stdin = os.Stdin
+		cmd.Stdin = nil // do not attach stdin by default
 		return nil
 	}}, opts...)
 
@@ -186,6 +187,12 @@ func runCommand(cmd string, opts ...Option) (int, error) {
 	// create the command, this will look it up based on path:
 	c := exec.CommandContext(Context(), cmd)
 
+	// set pgid so any kill operations apply to spawned children
+	c.SysProcAttr = &syscall.SysProcAttr{
+		Pgid:    0,
+		Setpgid: true,
+	}
+
 	env := os.Environ()
 	var dropped []string
 	for i := 0; i < len(env); i++ {
@@ -226,8 +233,9 @@ func runCommand(cmd string, opts ...Option) (int, error) {
 
 	// forward process end signals
 	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM) // , syscall.SIGQUIT)
 	go func() {
+		defer signal.Stop(signals)
 		for sig := range signals {
 			// SIGABRT is sent when the process ends normally, so we don't wait further
 			if sig == syscall.SIGABRT {
@@ -238,6 +246,9 @@ func runCommand(cmd string, opts ...Option) (int, error) {
 			}
 		}
 	}()
+
+	// WaitDelay
+	c.WaitDelay = 11 * time.Second
 
 	// execute
 	err := c.Run()
