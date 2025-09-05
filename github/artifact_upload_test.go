@@ -2,6 +2,7 @@ package github
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"github.com/anchore/go-make/config"
 	"github.com/anchore/go-make/file"
 	"github.com/anchore/go-make/git"
+	"github.com/anchore/go-make/lang"
 	"github.com/anchore/go-make/log"
 	"github.com/anchore/go-make/require"
 	"github.com/anchore/go-make/run"
@@ -42,7 +44,7 @@ func Test_UploadDownload(t *testing.T) {
 			p := Payload() // tests run in workflow in github
 
 			log.Log("repo info: %v", map[string]string{
-				"p.SHA":        p.SHA,
+				"payload":      string(lang.Return(json.Marshal(p))),
 				"git.Revision": git.Revision(),
 			})
 
@@ -58,7 +60,12 @@ func Test_UploadDownload(t *testing.T) {
 
 			tmpdir := t.TempDir()
 
-			api.DownloadArtifactDir(HeadSha(p.SHA), p.Workflow, tt.artifact, tmpdir)
+			sha := p.SHA
+			if p.PullRequest.Head.SHA != "" {
+				sha = p.PullRequest.Head.SHA
+			}
+
+			api.DownloadArtifactDir(HeadSha(sha), p.Workflow, tt.artifact, tmpdir)
 
 			testdataFile := file.Read("testdata/pr_run_artifacts.json")
 			downloadedFile := file.Read(filepath.Join(tmpdir, "pr_run_artifacts.json"))

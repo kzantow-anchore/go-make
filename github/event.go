@@ -16,20 +16,21 @@ import (
 // https://docs.github.com/en/actions/reference/workflows-and-actions/variables#default-environment-variables
 
 type Event struct {
-	Token     string `env:"GITHUB_TOKEN"`
-	Type      string `env:"GITHUB_EVENT_NAME"`
-	Ref       string `env:"GITHUB_REF"`
-	Actor     string `env:"GITHUB_ACTOR"`
-	Owner     string `env:"GITHUB_REPOSITORY_OWNER"`
-	Repo      string `env:"GITHUB_REPOSITORY"`
-	SHA       string `env:"GITHUB_SHA"`
-	Workflow  string `env:"GITHUB_WORKFLOW"`
-	RunID     string `env:"GITHUB_RUN_ID"`
-	RunNumber string `env:"GITHUB_RUN_NUMBER"`
-	Job       string `env:"GITHUB_JOB"`
-	Step      string `env:"GITHUB_STEP"`
-	Action    string `env:"GITHUB_ACTION"`
-	ApiURL    string `env:"GITHUB_API_URL"`
+	Token       string      `env:"GITHUB_TOKEN"`
+	Type        string      `env:"GITHUB_EVENT_NAME"`
+	Ref         string      `env:"GITHUB_REF"`
+	Actor       string      `env:"GITHUB_ACTOR"`
+	Owner       string      `env:"GITHUB_REPOSITORY_OWNER"`
+	Repo        string      `env:"GITHUB_REPOSITORY"`
+	SHA         string      `env:"GITHUB_SHA"`
+	Workflow    string      `env:"GITHUB_WORKFLOW"`
+	RunID       string      `env:"GITHUB_RUN_ID"`
+	RunNumber   string      `env:"GITHUB_RUN_NUMBER"`
+	Job         string      `env:"GITHUB_JOB"`
+	Step        string      `env:"GITHUB_STEP"`
+	Action      string      `env:"GITHUB_ACTION"`
+	ApiURL      string      `env:"GITHUB_API_URL"`
+	PullRequest PullRequest `json:"pull_request"`
 }
 
 // Payload returns the current event payload
@@ -42,6 +43,9 @@ func Payload() Event {
 		defer lang.Close(f, ciEventFile)
 		err := json.NewDecoder(f).Decode(&out)
 		if err == nil {
+			if config.Debug {
+				log.Debug("event:\n%s", log.FormatJSON(string(lang.Continue(os.ReadFile(ciEventFile)))))
+			}
 			return out
 		} else {
 			log.Debug(" %v %v; contents:\n%v", ciEventFile, err, log.FormatJSON(string(lang.Continue(os.ReadFile(ciEventFile)))))

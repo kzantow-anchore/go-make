@@ -66,9 +66,12 @@ type WorkflowRun struct {
 type PullRequest struct {
 	URL    string `json:"url,omitempty"`
 	Number int    `json:"number,omitempty"`
-	Head   struct {
-		Ref string `json:"ref,omitempty"`
-	} `json:"head,omitempty"`
+	Head   Ref    `json:"head,omitempty"`
+}
+
+type Ref struct {
+	Ref string `json:"ref,omitempty"`
+	SHA string `json:"sha,omitempty"`
 }
 
 type HeadCommit struct {
