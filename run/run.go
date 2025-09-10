@@ -189,12 +189,6 @@ func runCommand(cmd string, opts ...Option) (int, error) {
 	// create the command, this will look it up based on path:
 	c := exec.CommandContext(Context(), cmd)
 
-	// set pgid so any kill operations apply to spawned children
-	c.SysProcAttr = &syscall.SysProcAttr{
-		Pgid:    0,
-		Setpgid: true,
-	}
-
 	env := os.Environ()
 	var dropped []string
 	for i := 0; i < len(env); i++ {
@@ -249,8 +243,9 @@ func runCommand(cmd string, opts ...Option) (int, error) {
 		}
 	}()
 
-	// WaitDelay
+	// WaitDelay specifies the time to wait after the process completes before continuing
 	c.WaitDelay = 11 * time.Second
+	osExecOpts(c)
 
 	// execute
 	err := c.Run()
