@@ -11,7 +11,7 @@ import (
 
 var Prefix = ""
 
-var Log = func(format string, args ...any) {
+var Info = func(format string, args ...any) {
 	if len(args) == 0 {
 		_, _ = os.Stderr.WriteString(Prefix + template.Render(format) + "\n")
 	} else {
@@ -24,7 +24,7 @@ var Debug = func(format string, args ...any) {}
 var Trace = func(format string, args ...any) {}
 
 var Warn = func(format string, args ...any) {
-	Log(color.Yellow(format), args...)
+	Info(color.Yellow(format), args...)
 }
 
 // Error logs any non-nil error passed
@@ -34,7 +34,7 @@ var Error = func(err error, args ...any) {
 		for _, arg := range args {
 			argString += fmt.Sprintf(" %v", arg)
 		}
-		Log("%v%s", err, argString)
+		Info("%v%s", err, argString)
 	}
 }
 

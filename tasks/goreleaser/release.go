@@ -52,7 +52,7 @@ func ensureHeadHasTag() {
 
 	for _, tag := range tags {
 		if strings.HasPrefix(tag, "v") {
-			log.Log("HEAD has a version tag: %s", tag)
+			log.Info("HEAD has a version tag: %s", tag)
 			return
 		}
 	}

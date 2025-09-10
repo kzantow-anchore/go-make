@@ -13,10 +13,10 @@ func PeriodicStackTraces(interval func() time.Duration) {
 	go func() {
 		for {
 			time.Sleep(interval())
-			log.Log(color.Blue("stack trace:"))
+			log.Info(color.Blue("stack trace:"))
 			buf := bytes.Buffer{}
 			log.Error(pprof.Lookup("goroutine").WriteTo(&buf, 1))
-			log.Log(buf.String())
+			log.Info(buf.String())
 		}
 	}()
 }

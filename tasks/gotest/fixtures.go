@@ -20,7 +20,7 @@ func FixtureTasks() Task {
 			for _, f := range file.FindAll(file.JoinPaths(RootDir(), "**/{test-fixtures,testdata}/Makefile")) {
 				dir := filepath.Dir(f)
 				file.InDir(dir, func() {
-					log.Log("Building fixture %s", dir)
+					log.Info("Building fixture %s", dir)
 					Run("make")
 				})
 			}
@@ -34,7 +34,7 @@ func FixtureTasks() Task {
 					for _, f := range file.FindAll(file.JoinPaths(RootDir(), "**/{test-fixtures,testdata}/Makefile")) {
 						dir := filepath.Dir(f)
 						file.InDir(dir, func() {
-							log.Log("Cleaning fixture %s", dir)
+							log.Info("Cleaning fixture %s", dir)
 							// allow errors to continue
 							log.Error(lang.Catch(func() {
 								Run("make clean")

@@ -9,5 +9,5 @@ func Deps(deps ...string) []string {
 }
 
 var (
-	Log = log.Log
+	Log = log.Info
 )

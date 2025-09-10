@@ -78,7 +78,7 @@ func authTokenFromEnvFile() string {
 	token := ""
 	f, err := os.Open(envFile())
 	if err != nil {
-		log.Log("unable to read env file: %v: %v", envFile(), err)
+		log.Info("unable to read env file: %v: %v", envFile(), err)
 	}
 	if f != nil {
 		defer lang.Close(f, envFile())
@@ -216,7 +216,7 @@ func extractArtifactEntry(entry *zip.File, targetDir string) error {
 	targetFile := filepath.Join(targetDir, filepath.Join(path.Split(entry.Name))) //nolint:gocritic
 	targetFile = lang.Return(filepath.Abs(targetFile))
 	if !strings.HasPrefix(targetFile, targetDir) {
-		log.Log("skipping zip entry outside of target dir: %v abs: %v", entry.Name, targetFile)
+		log.Info("skipping zip entry outside of target dir: %v abs: %v", entry.Name, targetFile)
 		return nil
 	}
 

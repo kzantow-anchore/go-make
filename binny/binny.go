@@ -127,7 +127,7 @@ func Install(cmd string) string {
 				file.Copy(nonExe, toolPath)
 			}))
 		}
-		log.Log("binny installed: %v at %v", cmd, toolPath)
+		log.Info("binny installed: %v at %v", cmd, toolPath)
 		log.Debug("    └─ output: %v", out.String())
 	}
 
@@ -258,7 +258,7 @@ func BuildFromGoSource(file string, module, entrypoint, version string, opts ...
 	if version == "" {
 		panic(fmt.Errorf("no version specified for: %s %s %s", file, module, entrypoint))
 	}
-	log.Log("Building: %s@%s entrypoint: %s", module, version, entrypoint)
+	log.Info("Building: %s@%s entrypoint: %s", module, version, entrypoint)
 	git.InClone("https://"+module, version, func() {
 		// go build <options> -o file <entrypoint>
 		lang.Return(run.Command("go", run.Args("build"), run.Stderr(io.Discard), run.Options(opts...), run.Args("-o", file, "./"+entrypoint)))

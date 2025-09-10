@@ -37,7 +37,7 @@ type ReleaseSpec struct {
 func BinaryRelease(toolPath string, spec ReleaseSpec) error {
 	url := spec.render(runtime.GOOS, runtime.GOARCH)
 
-	log.Log("Downloading: %v", url)
+	log.Info("Downloading: %v", url)
 
 	buf := bytes.Buffer{}
 	_, err := Fetch(url, Writer(&buf))

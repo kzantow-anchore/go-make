@@ -16,7 +16,7 @@ func main() {
 			Description: "an example task that fails a run call due to an invalid command",
 			RunsOn:      lang.List("example-label"),
 			Run: func() {
-				log.Log("running some invalid command")
+				log.Info("running some invalid command")
 				Run("some-invalid-command", run.Args("--some", "args"))
 			},
 		},
@@ -25,7 +25,7 @@ func main() {
 			Description: "an example task that returns a custom exit code",
 			RunsOn:      lang.List("example-label"),
 			Run: func() {
-				log.Log("returning some exit code")
+				log.Info("returning some exit code")
 				lang.Throw(lang.NewStackTraceError(fmt.Errorf("some error")).WithExitCode(123))
 			},
 		},

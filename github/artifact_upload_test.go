@@ -30,7 +30,7 @@ func Test_UploadWorkflowArtifact(t *testing.T) {
 	api := NewClient()
 
 	_, err = api.UploadArtifactDir(tmp, UploadArtifactOption{
-		ArtifactName: "test-artifact",
+		ArtifactName: "test-artifact-" + random(),
 	})
 	require.NoError(t, err)
 }
@@ -48,7 +48,7 @@ func _Test_DownloadBranchArtifactDir(t *testing.T) {
 
 	api := NewClient()
 
-	err = api.DownloadBranchArtifactDir("main", "Validations", "test-artifact", targetPath)
+	err = api.DownloadBranchArtifactDir("main", "Validations", "test-artifact*", targetPath)
 	require.NoError(t, err)
 
 	require.Equal(t, "test-upload", file.Read(filepath.Join(tmp, "my-file.txt")))
@@ -137,7 +137,7 @@ func Test_ensureActionsArtifactNpmPackageInstalled(t *testing.T) {
 	ensureActionsArtifactInstalled(testDir)
 
 	file.InDir(testDir, func() {
-		log.Log("actions/artifact out: %s", Run("npm list -g @actions/artifact", run.NoFail()))
+		log.Info("actions/artifact out: %s", Run("npm list -g @actions/artifact", run.NoFail()))
 	})
 }
 

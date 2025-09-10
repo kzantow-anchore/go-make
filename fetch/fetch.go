@@ -51,7 +51,7 @@ func Fetch(urlString string, options ...Option) (contents string, err error) {
 		lang.Throw(option(&opts))
 	}
 
-	log.Log("fetch: %s", urlString)
+	log.Info("fetch: %s", urlString)
 	log.Debug("  └─ headers: %v", req.Header)
 
 	rsp := lang.Return(client.Do(req)) //nolint:bodyclose

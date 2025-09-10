@@ -43,7 +43,7 @@ func Delete(path string) {
 	rootDir := lang.Return(filepath.Abs(template.Render(config.RootDir)))
 
 	if strings.HasPrefix(dirToRm, rootDir) {
-		log.Log(color.Red(`deleting: %v`), dirToRm)
+		log.Info(color.Red(`deleting: %v`), dirToRm)
 		lang.Throw(os.RemoveAll(dirToRm))
 	} else {
 		panic(fmt.Errorf("directory '%s' not in RootDir: '%s'", dirToRm, rootDir))

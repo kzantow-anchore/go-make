@@ -64,12 +64,12 @@ func HandleErrors() {
 		return
 	case *StackTraceError:
 		errText := strings.TrimSpace(fmt.Sprintf("ERROR: %v", v.Err))
-		log.Log("\n" + color.Red(errText) + "\n\n" + strings.TrimSpace(v.Log) + "\n\n" + color.Grey("\n\n"+strings.Join(v.Stack, "\n")))
+		log.Info("\n" + color.Red(errText) + "\n\n" + strings.TrimSpace(v.Log) + "\n\n" + color.Grey("\n\n"+strings.Join(v.Stack, "\n")))
 		if v.ExitCode > 0 {
 			os.Exit(v.ExitCode)
 		}
 	default:
-		log.Log(color.Red("ERROR: %v", v) + color.Grey("\n"+strings.Join(stackTraceLines(), "\n")))
+		log.Info(color.Red("ERROR: %v", v) + color.Grey("\n"+strings.Join(stackTraceLines(), "\n")))
 	}
 	os.Exit(1)
 }

@@ -105,7 +105,7 @@ func Write(path string) Option {
 	}
 }
 
-// Quiet logs at Debug level instead of Log level
+// Quiet logs at Debug level instead of Info level
 func Quiet() Option {
 	return func(ctx context.Context, cmd *exec.Cmd) error {
 		if !config.Debug {
@@ -224,7 +224,7 @@ func runCommand(cmd string, opts ...Option) (int, error) {
 
 	args := c.Args[1:] // exec.Command sets the cmd to Args[0]
 
-	logFunc := log.Log
+	logFunc := log.Info
 	if cfg.quiet {
 		logFunc = log.Debug
 	}

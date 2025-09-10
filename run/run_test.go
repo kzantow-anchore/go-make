@@ -76,7 +76,7 @@ func Test_Command(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			commandLog := ""
-			require.SetAndRestore(t, &log.Log, func(format string, args ...any) {
+			require.SetAndRestore(t, &log.Info, func(format string, args ...any) {
 				commandLog = fmt.Sprintf(format, args...)
 			})
 			result, err := Command(testapp, tt.args...)
