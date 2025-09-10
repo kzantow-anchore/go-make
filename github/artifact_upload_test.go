@@ -23,6 +23,7 @@ func Test_UploadWorkflowArtifact(t *testing.T) {
 		t.Log("skipping in non-CI environment")
 		return
 	}
+	defer require.Test(t)
 
 	tmp := t.TempDir()
 	err := os.WriteFile(filepath.Join(tmp, "my-file.txt"), []byte("test-upload"), 0o644)
@@ -41,6 +42,7 @@ func Test_DownloadBranchArtifactDir(t *testing.T) {
 		t.Log("skipping artifact upload test in non-CI environment")
 		return
 	}
+	defer require.Test(t)
 
 	tmp := t.TempDir()
 	targetPath, err := filepath.Abs(tmp)
@@ -59,6 +61,7 @@ func Test_UploadDownload(t *testing.T) {
 		t.Log("skipping in non-CI environment")
 		return
 	}
+	defer require.Test(t)
 
 	tests := []struct {
 		files    string
@@ -111,18 +114,12 @@ func Test_UploadDownload(t *testing.T) {
 	}
 }
 
-func random() string {
-	b := make([]byte, 16)
-	_, err := rand.Read(b)
-	log.Error(err)
-	return fmt.Sprintf("%x", b)
-}
-
 func Test_ensureActionsArtifactNpmPackageInstalled(t *testing.T) {
 	if !config.CI {
 		t.Log("skipping in non-CI environment")
 		return
 	}
+	defer require.Test(t)
 
 	testDir := t.TempDir()
 	ensureActionsArtifactInstalled(testDir)
@@ -133,6 +130,8 @@ func Test_ensureActionsArtifactNpmPackageInstalled(t *testing.T) {
 }
 
 func Test_renderUploadFiles(t *testing.T) {
+	defer require.Test(t)
+
 	tests := []struct {
 		name     string
 		baseDir  string
@@ -181,4 +180,11 @@ func Test_renderUploadFiles(t *testing.T) {
 			require.EqualElements(t, tt.expected, files)
 		})
 	}
+}
+
+func random() string {
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	log.Error(err)
+	return fmt.Sprintf("%x", b)
 }
