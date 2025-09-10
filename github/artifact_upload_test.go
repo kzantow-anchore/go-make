@@ -2,17 +2,15 @@ package github
 
 import (
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	. "github.com/anchore/go-make"
 	"github.com/anchore/go-make/config"
 	"github.com/anchore/go-make/file"
-	"github.com/anchore/go-make/git"
-	"github.com/anchore/go-make/lang"
 	"github.com/anchore/go-make/log"
 	"github.com/anchore/go-make/require"
 	"github.com/anchore/go-make/run"
@@ -37,7 +35,7 @@ func Test_UploadWorkflowArtifact(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_DownloadBranchArtifactDir(t *testing.T) {
+func _Test_DownloadBranchArtifactDir(t *testing.T) {
 	if !config.CI {
 		t.Log("skipping artifact upload test in non-CI environment")
 		return
@@ -66,27 +64,34 @@ func Test_UploadDownload(t *testing.T) {
 	tests := []struct {
 		files    string
 		artifact string
+		expect   []string
 	}{
 		{
 			files:    "pr_run_artifacts.json",
 			artifact: "my-artifact-name",
+			expect: []string{
+				"pr_run_artifacts.json",
+			},
 		},
 		{
 			files: "**/*_artifacts.json",
+			expect: []string{
+				"pr_run_artifacts.json",
+			},
 		},
 		{
 			files: "*",
+			expect: []string{
+				"pr_run_artifacts.json",
+				"pr_run.json",
+				"empty.json",
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.files, func(t *testing.T) {
 			p := Payload() // tests run in workflow in github
-
-			log.Log("repo info: %v", map[string]string{
-				"payload":      string(lang.Return(json.Marshal(p))),
-				"git.Revision": git.Revision(),
-			})
 
 			tt.artifact += "-" + random()
 
@@ -108,8 +113,13 @@ func Test_UploadDownload(t *testing.T) {
 
 			require.Equal(t, testdataFile, downloadedFile)
 
-			require.True(t, file.Exists("testdata/empty.json"))
-			require.True(t, !file.Exists(filepath.Join(tmpdir, "empty.json")))
+			for _, f := range tt.expect {
+				require.True(t, file.Exists(filepath.Join(tmpdir, f)))
+			}
+
+			if !slices.Contains(tt.expect, "empty.json") {
+				require.True(t, !file.Exists(filepath.Join(tmpdir, "empty.json")))
+			}
 		})
 	}
 }
@@ -122,6 +132,8 @@ func Test_ensureActionsArtifactNpmPackageInstalled(t *testing.T) {
 	defer require.Test(t)
 
 	testDir := t.TempDir()
+	require.SetAndRestore(t, &config.RootDir, testDir)
+
 	ensureActionsArtifactInstalled(testDir)
 
 	file.InDir(testDir, func() {

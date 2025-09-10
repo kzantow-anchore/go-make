@@ -15,13 +15,13 @@ import (
 func Test_ListWorkflowRunsBranch(t *testing.T) {
 	defer require.Test(t)
 
-	url := require.Server(t, fileMap(map[string]string{
+	baseURL := require.Server(t, fileMap(map[string]string{
 		"/repos/testorg/testrepo/actions/runs?branch=my-branch": "pr_run.json",
 	}), removeCommonQueryParams)
 
 	testrepo := Api{
 		Token:   "my-token",
-		BaseURL: url,
+		BaseURL: baseURL,
 		Repo:    "testorg/testrepo",
 	}
 
@@ -33,7 +33,7 @@ func Test_ListWorkflowRunsBranch(t *testing.T) {
 func Test_ListArtifactsForCommit(t *testing.T) {
 	defer require.Test(t)
 
-	url := require.Server(t, fileMap(map[string]string{
+	baseURL := require.Server(t, fileMap(map[string]string{
 		"/repos/testorg/testrepo/actions/runs?branch=my-branch":                                            "pr_run.json",
 		"/repos/testorg/testrepo/actions/runs?branch=my-branch&status=success":                             "pr_run.json",
 		"/repos/testorg/testrepo/actions/runs/16972954485/artifacts":                                       "pr_run_artifacts.json",
@@ -44,7 +44,7 @@ func Test_ListArtifactsForCommit(t *testing.T) {
 
 	testrepo := Api{
 		Token:   "my-token",
-		BaseURL: url,
+		BaseURL: baseURL,
 		Repo:    "testorg/testrepo",
 	}
 
