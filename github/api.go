@@ -32,10 +32,7 @@ type Api struct {
 	// BaseURL base URL to the GitHub API defaults to https://api.github.com
 	BaseURL string
 
-	// Owner is the GitHub organization or user
-	Owner string
-
-	// Repo is the GitHub repository
+	// Repo is the full GitHub repository, e.g. anchore/syft
 	Repo string
 
 	// Actor is the actor executing the workflow in GitHub, the login, e.g. kzantow
@@ -60,14 +57,11 @@ func NewClient(params ...Param) Api {
 	a := Api{
 		Token:   p.Token,
 		BaseURL: lang.Default(p.ApiURL, "https://api.github.com"),
-		Owner:   p.Owner,
 		Repo:    p.Repo,
 	}
 
 	for _, param := range params {
 		switch param.name {
-		case "owner":
-			a.Owner = param.value
 		case "repo":
 			a.Repo = param.value
 		case "actor":
@@ -100,7 +94,7 @@ func authTokenFromEnvFile() string {
 func (a Api) listWorkflowRuns(branch string, params ...Param) ([]WorkflowRun, error) {
 	// branch=${branch}&status=success&per_page=1&sort=created&direction=desc
 	params = append(params, Branch(branch), sort("created"), direction("desc"))
-	runs, err := get[WorkflowRunList](a, "/repos/%s/%s/actions/runs?%s", a.Owner, a.Repo, join(params, "&"))
+	runs, err := get[WorkflowRunList](a, "/repos/%s/actions/runs?%s", a.Repo, join(params, "&"))
 	return runs.WorkflowRuns, err
 }
 
@@ -119,7 +113,7 @@ func (a Api) LatestWorkflowRun(branch, workflowNameGlob string) (WorkflowRun, er
 			return run, nil
 		}
 	}
-	return WorkflowRun{}, fmt.Errorf("no workflow run found for %s/%s workflow: %s", a.Owner, a.Repo, workflowNameGlob)
+	return WorkflowRun{}, fmt.Errorf("no workflow run found for %s workflow: %s", a.Repo, workflowNameGlob)
 }
 
 // ListArtifactsForBranch returns artifacts for the latest run on the given workflow
@@ -129,17 +123,17 @@ func (a Api) ListArtifactsForBranch(branch, workflowNameGlob, artifactNameGlob s
 		return nil, err
 	}
 	if latestRun.ID == 0 {
-		return nil, fmt.Errorf("no workflow run found for %s/%s workflow: %s", a.Owner, a.Repo, workflowNameGlob)
+		return nil, fmt.Errorf("no workflow run found for %s workflow: %s", a.Repo, workflowNameGlob)
 	}
 	return a.ListArtifactsForWorkflowRun(latestRun.ID, artifactNameGlob)
 }
 
 func (a Api) ListArtifactsForWorkflowRun(runID int64, artifactNameGlob string) ([]Artifact, error) {
-	return a.listWorkflowRunArtifacts(a.Owner, a.Repo, runID, artifactNameGlob)
+	return a.listWorkflowRunArtifacts(a.Repo, runID, artifactNameGlob)
 }
 
-func (a Api) listWorkflowRunArtifacts(owner, repo string, runID int64, artifactNameGlob string) ([]Artifact, error) {
-	rsp, err := get[ArtifactList](a, fmt.Sprintf("/repos/%s/%s/actions/runs/%v/artifacts", owner, repo, runID))
+func (a Api) listWorkflowRunArtifacts(repo string, runID int64, artifactNameGlob string) ([]Artifact, error) {
+	rsp, err := get[ArtifactList](a, fmt.Sprintf("/repos/%s/actions/runs/%v/artifacts", repo, runID))
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +153,7 @@ func (a Api) DownloadBranchArtifactDir(branch, workflowName, artifactName, targe
 		return err
 	}
 	if latestRun.ID == 0 {
-		return fmt.Errorf("no workflow run found for %s/%s workflow: %s", a.Owner, a.Repo, workflowName)
+		return fmt.Errorf("no workflow run found for %s workflow: %s", a.Repo, workflowName)
 	}
 	return a.DownloadArtifactDir(latestRun.ID, artifactName, targetDir)
 }
@@ -193,7 +187,7 @@ func (a Api) downloadAndExtractArtifact(artifactID int64, targetDir string) erro
 	// https://docs.github.com/en/rest/actions/artifacts?apiVersion=2022-11-28#download-an-artifact
 	// https://api.github.com/repos/OWNER/REPO/actions/artifacts/ARTIFACT_ID/ARCHIVE_FORMAT
 	// archive_format must be zip
-	_, err := fetch.Fetch(fmt.Sprintf(a.BaseURL+"/repos/%s/%s/actions/artifacts/%v/zip", a.Owner, a.Repo, artifactID), a.headers(), fetch.Writer(f))
+	_, err := fetch.Fetch(fmt.Sprintf(a.BaseURL+"/repos/%s/actions/artifacts/%v/zip", a.Repo, artifactID), a.headers(), fetch.Writer(f))
 	if err != nil {
 		return err
 	}

@@ -7,20 +7,9 @@ type Param struct {
 	value string
 }
 
-func Owner(v string) Param {
-	return Param{"owner", v}
-}
-
+// Repo is the full repository, e.g. owner/repo
 func Repo(v string) Param {
 	return Param{"repo", v}
-}
-
-func HeadSha(v string) Param {
-	return Param{"head_sha", v}
-}
-
-func RunID(v string) Param {
-	return Param{"run_id", v}
 }
 
 func Branch(v string) Param {
@@ -29,10 +18,6 @@ func Branch(v string) Param {
 
 func Name(v string) Param {
 	return Param{"name", v}
-}
-
-func Actor(v string) Param {
-	return Param{"actor", v}
 }
 
 // Status in: completed, action_required, cancelled, failure, neutral, skipped,

@@ -22,7 +22,7 @@ type Event struct {
 	Ref         string      `env:"GITHUB_REF"`
 	Actor       string      `env:"GITHUB_ACTOR"`
 	Owner       string      `env:"GITHUB_REPOSITORY_OWNER"`
-	Repo        string      `env:"GITHUB_REPOSITORY"`
+	Repo        string      `env:"GITHUB_REPOSITORY"` // Repo is the full name of the repository, including the owner
 	SHA         string      `env:"GITHUB_SHA"`
 	Workflow    string      `env:"GITHUB_WORKFLOW"`
 	RunID       int64       `env:"GITHUB_RUN_ID"`

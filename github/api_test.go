@@ -22,8 +22,7 @@ func Test_ListWorkflowRunsBranch(t *testing.T) {
 	testrepo := Api{
 		Token:   "my-token",
 		BaseURL: url,
-		Owner:   "testorg",
-		Repo:    "testrepo",
+		Repo:    "testorg/testrepo",
 	}
 
 	runs, err := testrepo.listWorkflowRuns("my-branch")
@@ -46,8 +45,7 @@ func Test_ListArtifactsForCommit(t *testing.T) {
 	testrepo := Api{
 		Token:   "my-token",
 		BaseURL: url,
-		Owner:   "testorg",
-		Repo:    "testrepo",
+		Repo:    "testorg/testrepo",
 	}
 
 	artifacts, err := testrepo.ListArtifactsForBranch("my-branch", "Not Validations", "linux-build_linux_arm64_v8.0")
@@ -94,8 +92,7 @@ func Test_ArtifactDownload(t *testing.T) {
 	testrepo := Api{
 		Token:   "my-token",
 		BaseURL: baseURL,
-		Owner:   "testorg",
-		Repo:    "testrepo",
+		Repo:    "testorg/testrepo",
 	}
 
 	tmpdir := t.TempDir()
