@@ -16,6 +16,7 @@ import (
 // https://docs.github.com/en/actions/reference/workflows-and-actions/variables#default-environment-variables
 
 type Event struct {
+	ApiURL      string      `env:"GITHUB_API_URL"`
 	Token       string      `env:"GITHUB_TOKEN"`
 	Type        string      `env:"GITHUB_EVENT_NAME"`
 	Ref         string      `env:"GITHUB_REF"`
@@ -24,18 +25,23 @@ type Event struct {
 	Repo        string      `env:"GITHUB_REPOSITORY"`
 	SHA         string      `env:"GITHUB_SHA"`
 	Workflow    string      `env:"GITHUB_WORKFLOW"`
-	RunID       string      `env:"GITHUB_RUN_ID"`
+	RunID       int64       `env:"GITHUB_RUN_ID"`
 	RunNumber   string      `env:"GITHUB_RUN_NUMBER"`
 	Job         string      `env:"GITHUB_JOB"`
 	Step        string      `env:"GITHUB_STEP"`
 	Action      string      `env:"GITHUB_ACTION"`
-	ApiURL      string      `env:"GITHUB_API_URL"`
 	PullRequest PullRequest `json:"pull_request"`
+}
+
+func (e Event) IsPullRequest() bool {
+	return e.PullRequest != PullRequest{}
 }
 
 // Payload returns the current event payload
 func Payload() Event {
-	out := Event{}
+	out := Event{
+		Token: authTokenFromEnvFile(),
+	}
 	envLoad(&out)
 	ciEventFile := os.Getenv("GITHUB_EVENT_PATH")
 	if ciEventFile != "" {
@@ -51,7 +57,6 @@ func Payload() Event {
 			log.Debug(" %v %v; contents:\n%v", ciEventFile, err, log.FormatJSON(string(lang.Continue(os.ReadFile(ciEventFile)))))
 		}
 	}
-	envLoad(&out)
 	return out
 }
 

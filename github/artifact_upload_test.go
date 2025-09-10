@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -17,9 +18,45 @@ import (
 	"github.com/anchore/go-make/run"
 )
 
-func Test_UploadDownload(t *testing.T) {
+func Test_UploadWorkflowArtifact(t *testing.T) {
+	if !config.CI {
+		t.Log("skipping in non-CI environment")
+		return
+	}
+
+	tmp := t.TempDir()
+	err := os.WriteFile(filepath.Join(tmp, "my-file.txt"), []byte("test-upload"), 0o644)
+	require.NoError(t, err)
+
+	api := NewClient()
+
+	_, err = api.UploadArtifactDir(tmp, UploadArtifactOption{
+		ArtifactName: "test-artifact",
+	})
+	require.NoError(t, err)
+}
+
+func Test_DownloadBranchArtifactDir(t *testing.T) {
 	if !config.CI {
 		t.Log("skipping artifact upload test in non-CI environment")
+		return
+	}
+
+	tmp := t.TempDir()
+	targetPath, err := filepath.Abs(tmp)
+	require.NoError(t, err)
+
+	api := NewClient()
+
+	err = api.DownloadBranchArtifactDir("main", "Validations", "test-artifact", targetPath)
+	require.NoError(t, err)
+
+	require.Equal(t, "test-upload", file.Read(filepath.Join(tmp, "my-file.txt")))
+}
+
+func Test_UploadDownload(t *testing.T) {
+	if !config.CI {
+		t.Log("skipping in non-CI environment")
 		return
 	}
 
@@ -50,7 +87,7 @@ func Test_UploadDownload(t *testing.T) {
 
 			tt.artifact += "-" + random()
 
-			api := NewClient(Owner(p.Owner), Repo(p.Repo))
+			api := NewClient()
 			artifactId, err := api.UploadArtifactDir("testdata", UploadArtifactOption{
 				ArtifactName: tt.artifact,
 				Glob:         tt.files,
@@ -60,12 +97,8 @@ func Test_UploadDownload(t *testing.T) {
 
 			tmpdir := t.TempDir()
 
-			sha := p.SHA
-			if p.PullRequest.Head.SHA != "" {
-				sha = p.PullRequest.Head.SHA
-			}
-
-			api.DownloadArtifactDir(HeadSha(sha), p.Workflow, tt.artifact, tmpdir)
+			err = api.DownloadArtifactDir(p.RunID, tt.artifact, tmpdir)
+			require.NoError(t, err)
 
 			testdataFile := file.Read("testdata/pr_run_artifacts.json")
 			downloadedFile := file.Read(filepath.Join(tmpdir, "pr_run_artifacts.json"))
@@ -87,7 +120,7 @@ func random() string {
 
 func Test_ensureActionsArtifactNpmPackageInstalled(t *testing.T) {
 	if !config.CI {
-		t.Log("skipping artifact upload test in non-CI environment")
+		t.Log("skipping in non-CI environment")
 		return
 	}
 

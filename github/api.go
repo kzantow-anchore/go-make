@@ -3,6 +3,7 @@ package github
 import (
 	"archive/zip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,10 +15,10 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 
 	. "github.com/anchore/go-make"
-	"github.com/anchore/go-make/color"
 	"github.com/anchore/go-make/config"
 	"github.com/anchore/go-make/fetch"
 	"github.com/anchore/go-make/file"
+	"github.com/anchore/go-make/git"
 	"github.com/anchore/go-make/lang"
 	"github.com/anchore/go-make/log"
 )
@@ -41,45 +42,46 @@ type Api struct {
 	Actor string
 }
 
-func NewClient(param ...Param) Api {
-	token := config.Env("GITHUB_TOKEN", "")
-	if token == "" {
-		if config.CI {
-			token = authTokenFromEnvFile(token)
-			if token == "" {
-				log.Warn("ensure actions environment is set up in CI environment, this should be done automatically by the bootstrap action")
+// NewClient creates a new GitHub API client, looking up information automatically from the environment
+// when run in a GitHub Actions runner
+func NewClient(params ...Param) Api {
+	p := Payload() // look up payload when running on github runners
 
-				p := Payload()
-				token = p.Token
-			}
-		}
+	log.Debug("NewClient: %v", map[string]string{
+		"git.Revision": git.Revision(),
+		"payload":      log.FormatJSON(string(lang.Continue(json.Marshal(p)))),
+	})
+
+	if p.Token == "" {
+		// try to get locally authenticated token
+		p.Token = Run("gh auth token")
 	}
-	if token == "" {
-		// run.Command will not install from binny, this will always use the provided `gh` command on the runner
-		token = Run("gh auth token")
-	}
+
 	a := Api{
-		Token:   token,
-		BaseURL: config.Env("GITHUB_API_URL", "https://api.github.com"),
-		Owner:   config.Env("GITHUB_OWNER", ""),
-		Repo:    config.Env("GITHUB_REPO", ""),
+		Token:   p.Token,
+		BaseURL: lang.Default(p.ApiURL, "https://api.github.com"),
+		Owner:   p.Owner,
+		Repo:    p.Repo,
 	}
-	for _, p := range param {
-		switch parts := strings.SplitN(p(), "=", 2); parts[0] {
+
+	for _, param := range params {
+		switch param.name {
 		case "owner":
-			a.Owner = parts[1]
+			a.Owner = param.value
 		case "repo":
-			a.Repo = parts[1]
+			a.Repo = param.value
 		case "actor":
-			a.Actor = parts[1]
+			a.Actor = param.value
 		case "token":
-			a.Token = parts[1]
+			a.Token = param.value
 		}
 	}
+
 	return a
 }
 
-func authTokenFromEnvFile(token string) string {
+func authTokenFromEnvFile() string {
+	token := ""
 	f, err := os.Open(envFile())
 	if err != nil {
 		log.Log("unable to read env file: %v: %v", envFile(), err)
@@ -95,63 +97,95 @@ func authTokenFromEnvFile(token string) string {
 }
 
 // ListWorkflowRuns returns the workflow runs for the given criteria
-func (a Api) ListWorkflowRuns(ref Param, params ...Param) []WorkflowRun {
+func (a Api) listWorkflowRuns(branch string, params ...Param) ([]WorkflowRun, error) {
 	// branch=${branch}&status=success&per_page=1&sort=created&direction=desc
-	params = append(params, ref, sort("created"), direction("desc"))
-	return get[WorkflowRunList](a, "/repos/%s/%s/actions/runs?%s", a.Owner, a.Repo, join(params, "&")).WorkflowRuns
+	params = append(params, Branch(branch), sort("created"), direction("desc"))
+	runs, err := get[WorkflowRunList](a, "/repos/%s/%s/actions/runs?%s", a.Owner, a.Repo, join(params, "&"))
+	return runs.WorkflowRuns, err
 }
 
-// LatestWorkflowRun returns the latest workflow run for the given criteria
-func (a Api) LatestWorkflowRun(ref Param, workflowName string, params ...Param) WorkflowRun {
-	runs := a.ListWorkflowRuns(ref, params...)
+// LatestWorkflowRun returns the latest completed workflow run for a branch
+func (a Api) LatestWorkflowRun(branch, workflowNameGlob string) (WorkflowRun, error) {
+	runs, err := a.listWorkflowRuns(branch, PerPage(100), Status("success"))
+	if err != nil {
+		return WorkflowRun{}, err
+	}
 	for _, run := range runs {
 		switch run.Status {
 		case "cancelled", "queued":
 			continue
 		}
-		if nameMatches(workflowName, run.Name) {
-			return run
+		if workflowNameGlob == "" || nameMatches(workflowNameGlob, run.Name) {
+			return run, nil
 		}
 	}
-	return WorkflowRun{}
+	return WorkflowRun{}, fmt.Errorf("no workflow run found for %s/%s workflow: %s", a.Owner, a.Repo, workflowNameGlob)
 }
 
-func (a Api) ListArtifactsForWorkflow(ref Param, workflowName string, artifactName string, params ...Param) []Artifact {
-	latestRun := a.LatestWorkflowRun(ref, workflowName, params...)
-	if latestRun.ID == 0 {
-		log.Log(color.Yellow("no workflow run found for %s/%s workflow: %s", a.Owner, a.Repo, workflowName))
-		return nil
+// ListArtifactsForBranch returns artifacts for the latest run on the given workflow
+func (a Api) ListArtifactsForBranch(branch, workflowNameGlob, artifactNameGlob string) ([]Artifact, error) {
+	latestRun, err := a.LatestWorkflowRun(branch, workflowNameGlob)
+	if err != nil {
+		return nil, err
 	}
+	if latestRun.ID == 0 {
+		return nil, fmt.Errorf("no workflow run found for %s/%s workflow: %s", a.Owner, a.Repo, workflowNameGlob)
+	}
+	return a.ListArtifactsForWorkflowRun(latestRun.ID, artifactNameGlob)
+}
 
+func (a Api) ListArtifactsForWorkflowRun(runID int64, artifactNameGlob string) ([]Artifact, error) {
+	return a.listWorkflowRunArtifacts(a.Owner, a.Repo, runID, artifactNameGlob)
+}
+
+func (a Api) listWorkflowRunArtifacts(owner, repo string, runID int64, artifactNameGlob string) ([]Artifact, error) {
+	rsp, err := get[ArtifactList](a, fmt.Sprintf("/repos/%s/%s/actions/runs/%v/artifacts", owner, repo, runID))
+	if err != nil {
+		return nil, err
+	}
 	var out []Artifact
-	artifacts := a.listWorkflowRunArtifacts(a.Owner, a.Repo, latestRun.ID, artifactName, params...)
-	for _, artifact := range artifacts {
-		if nameMatches(artifactName, artifact.Name) {
+	for _, artifact := range rsp.Artifacts {
+		if artifactNameGlob == "" || nameMatches(artifactNameGlob, artifact.Name) {
 			out = append(out, artifact)
 		}
 	}
-	return out
+	return out, nil
 }
 
-func (a Api) listWorkflowRunArtifacts(owner, repo string, runID int64, artifactName string, params ...Param) []Artifact {
-	if isExactMatch(artifactName) {
-		params = append(params, Name(artifactName))
+// DownloadBranchArtifactDir downloads an artifact from the latest run on a branch and extracts it to the targetDir
+func (a Api) DownloadBranchArtifactDir(branch, workflowName, artifactName, targetDir string) error {
+	latestRun, err := a.LatestWorkflowRun(branch, workflowName)
+	if err != nil {
+		return err
 	}
-	return get[ArtifactList](a, fmt.Sprintf("/repos/%s/%s/actions/runs/%v/artifacts?%s", owner, repo, runID, join(params, "&"))).Artifacts
+	if latestRun.ID == 0 {
+		return fmt.Errorf("no workflow run found for %s/%s workflow: %s", a.Owner, a.Repo, workflowName)
+	}
+	return a.DownloadArtifactDir(latestRun.ID, artifactName, targetDir)
 }
 
 // DownloadArtifactDir downloads an artifact and extracts it to the targetDir
-func (a Api) DownloadArtifactDir(ref Param, workflowName, artifactName, targetDir string, params ...Param) {
+func (a Api) DownloadArtifactDir(runID int64, artifactNameGlob, targetDir string) error {
 	targetDir = lang.Return(filepath.Abs(targetDir))
 
-	artifacts := a.ListArtifactsForWorkflow(ref, workflowName, artifactName, params...)
-	for _, artifact := range artifacts {
-		file.EnsureDir(targetDir)
-		a.extractArtifact(artifact.ID, targetDir)
+	artifacts, err := a.ListArtifactsForWorkflowRun(runID, artifactNameGlob)
+	if err != nil {
+		return err
 	}
+
+	if err = ensureDir(targetDir); err != nil {
+		return err
+	}
+
+	for _, artifact := range artifacts {
+		if err = a.downloadAndExtractArtifact(artifact.ID, targetDir); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (a Api) extractArtifact(artifactID int64, targetDir string) {
+func (a Api) downloadAndExtractArtifact(artifactID int64, targetDir string) error {
 	f := lang.Return(os.CreateTemp(targetDir, ".gh-download-"))
 	tempZip := filepath.Join(targetDir, f.Name())
 	defer lang.Close(f, tempZip)
@@ -159,18 +193,27 @@ func (a Api) extractArtifact(artifactID int64, targetDir string) {
 	// https://docs.github.com/en/rest/actions/artifacts?apiVersion=2022-11-28#download-an-artifact
 	// https://api.github.com/repos/OWNER/REPO/actions/artifacts/ARTIFACT_ID/ARCHIVE_FORMAT
 	// archive_format must be zip
-	lang.Return(fetch.Fetch(fmt.Sprintf(a.BaseURL+"/repos/%s/%s/actions/artifacts/%v/zip", a.Owner, a.Repo, artifactID), a.headers(), fetch.Writer(f)))
+	_, err := fetch.Fetch(fmt.Sprintf(a.BaseURL+"/repos/%s/%s/actions/artifacts/%v/zip", a.Owner, a.Repo, artifactID), a.headers(), fetch.Writer(f))
+	if err != nil {
+		return err
+	}
 	file.LogWorkdir()
-	s := lang.Return(f.Stat())
+	s, err := f.Stat()
+	if err != nil {
+		return err
+	}
 	zipReader := lang.Return(zip.NewReader(f, s.Size()))
 	for _, entry := range zipReader.File {
-		extractArtifactEntry(entry, targetDir)
+		if err = extractArtifactEntry(entry, targetDir); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func extractArtifactEntry(entry *zip.File, targetDir string) {
+func extractArtifactEntry(entry *zip.File, targetDir string) error {
 	if entry == nil || entry.FileInfo() == nil || entry.FileInfo().IsDir() {
-		return
+		return nil
 	}
 	if filepath.IsAbs(entry.Name) {
 		log.Debug("got absolute path to zip entry: %v", entry.Name)
@@ -180,15 +223,29 @@ func extractArtifactEntry(entry *zip.File, targetDir string) {
 	targetFile = lang.Return(filepath.Abs(targetFile))
 	if !strings.HasPrefix(targetFile, targetDir) {
 		log.Log("skipping zip entry outside of target dir: %v abs: %v", entry.Name, targetFile)
-		return
+		return nil
 	}
-	file.EnsureDir(filepath.Dir(targetFile))
 
-	target := lang.Return(os.OpenFile(targetFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, entry.FileInfo().Mode()))
+	if err := ensureDir(targetDir); err != nil {
+		return err
+	}
+
+	target, err := os.OpenFile(targetFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, entry.FileInfo().Mode())
+	if err != nil {
+		return err
+	}
+
 	defer lang.Close(target, targetFile)
-	rdr := lang.Return(entry.Open())
+	rdr, err := entry.Open()
+	if err != nil {
+		return err
+	}
 	defer lang.Close(rdr, targetFile)
-	lang.Return(io.Copy(target, rdr))
+	_, err = io.CopyN(target, rdr, 2*fetch.GB)
+	if !errors.Is(err, io.EOF) {
+		return err
+	}
+	return nil
 }
 
 func (a Api) headers() fetch.Option {
@@ -199,14 +256,17 @@ func (a Api) headers() fetch.Option {
 	})
 }
 
-func get[T any](a Api, url string, args ...any) T {
-	contents := lang.Return(fetch.Fetch(a.BaseURL+fmt.Sprintf(url, args...), a.headers()))
+func get[T any](a Api, url string, args ...any) (T, error) {
+	var out T
+	contents, err := fetch.Fetch(a.BaseURL+fmt.Sprintf(url, args...), a.headers())
+	if err != nil {
+		return out, err
+	}
 	if config.Debug {
 		log.Debug("fetch result %v: %v", url, log.FormatJSON(contents))
 	}
-	var out T
-	lang.Throw(json.NewDecoder(strings.NewReader(contents)).Decode(&out))
-	return out
+	err = json.NewDecoder(strings.NewReader(contents)).Decode(&out)
+	return out, err
 }
 
 func join(params []Param, joiner string) string {
@@ -215,13 +275,9 @@ func join(params []Param, joiner string) string {
 		if i > 0 {
 			out += joiner
 		}
-		out += param()
+		out += param.name + "=" + param.value
 	}
 	return out
-}
-
-func queryParam(param, value string) Param {
-	return func() string { return param + "=" + value }
 }
 
 // nameMatches returns true if the name matches the expression, lowercase matching, supports globbing
@@ -232,6 +288,8 @@ func nameMatches(pattern, name string) bool {
 	return lang.Return(doublestar.Match(pattern, name))
 }
 
-func isExactMatch(pattern string) bool {
-	return !strings.ContainsAny(pattern, "*?[{")
+func ensureDir(dir string) error {
+	return lang.Catch(func() {
+		file.EnsureDir(filepath.Dir(dir))
+	})
 }

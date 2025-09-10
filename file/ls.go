@@ -24,6 +24,7 @@ func Ls(dir string) string {
 	return buf.String()
 }
 
+// LogWorkdir logs an ls of the current working directory
 func LogWorkdir() {
 	if !config.Debug {
 		return

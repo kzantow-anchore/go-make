@@ -2,46 +2,53 @@ package github
 
 import "strconv"
 
-type Param func() string
+type Param struct {
+	name  string
+	value string
+}
 
 func Owner(v string) Param {
-	return queryParam("owner", v)
+	return Param{"owner", v}
 }
 
 func Repo(v string) Param {
-	return queryParam("repo", v)
+	return Param{"repo", v}
 }
 
 func HeadSha(v string) Param {
-	return queryParam("head_sha", v)
+	return Param{"head_sha", v}
+}
+
+func RunID(v string) Param {
+	return Param{"run_id", v}
 }
 
 func Branch(v string) Param {
-	return queryParam("branch", v)
+	return Param{"branch", v}
 }
 
 func Name(v string) Param {
-	return queryParam("name", v)
+	return Param{"name", v}
 }
 
 func Actor(v string) Param {
-	return queryParam("actor", v)
+	return Param{"actor", v}
 }
 
 // Status in: completed, action_required, cancelled, failure, neutral, skipped,
 // stale, success, timed_out, in_progress, queued, requested, waiting, pending
 func Status(v string) Param {
-	return queryParam("status", v)
+	return Param{"status", v}
 }
 
 func PerPage(v uint) Param {
-	return queryParam("per_page", strconv.Itoa(int(v)))
+	return Param{"per_page", strconv.Itoa(int(v))}
 }
 
 func sort(v string) Param {
-	return queryParam("sort", v)
+	return Param{"sort", v}
 }
 
 func direction(v string) Param {
-	return queryParam("direction", v)
+	return Param{"direction", v}
 }
