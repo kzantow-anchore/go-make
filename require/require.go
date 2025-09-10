@@ -10,11 +10,9 @@ import (
 
 func Test(t *testing.T) {
 	t.Helper()
-	defer func() {
-		if r := recover(); r != nil {
-			t.Fatalf("failed due: %v", r)
-		}
-	}()
+	if r := recover(); r != nil {
+		t.Fatalf("failed due: %v", r)
+	}
 }
 
 func True(t *testing.T, check bool) {
