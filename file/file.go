@@ -153,7 +153,7 @@ func Require(file string) {
 
 // FindAll finds all matching files given a glob expression
 func FindAll(glob string) []string {
-	return lang.Return(doublestar.FilepathGlob(glob))
+	return lang.Return(doublestar.FilepathGlob(glob, doublestar.WithFilesOnly()))
 }
 
 // FindParent finds the first matching file in the specified directory or any parent directory

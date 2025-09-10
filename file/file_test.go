@@ -123,3 +123,32 @@ func Test_EnsureDir(t *testing.T) {
 		file.EnsureDir(newFile)
 	}))
 }
+
+func Test_FindAll(t *testing.T) {
+	tests := []struct {
+		pattern       string
+		expectedCount int
+	}{
+		{
+			pattern:       "**/*.json",
+			expectedCount: 2,
+		},
+		{
+			pattern:       "**/*",
+			expectedCount: 4,
+		},
+		{
+			pattern:       ".config.yaml",
+			expectedCount: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.pattern, func(t *testing.T) {
+			file.InDir("testdata/some", func() {
+				got := file.FindAll(tt.pattern)
+				require.Equal(t, tt.expectedCount, len(got))
+			})
+		})
+	}
+}
