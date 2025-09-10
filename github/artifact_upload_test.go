@@ -108,7 +108,7 @@ func Test_UploadDownload(t *testing.T) {
 
 			require.Equal(t, testdataFile, downloadedFile)
 
-			require.True(t, file.Exists(filepath.Join(tmpdir, "testdata/empty.json")))
+			require.True(t, file.Exists("testdata/empty.json"))
 			require.True(t, !file.Exists(filepath.Join(tmpdir, "empty.json")))
 		})
 	}
