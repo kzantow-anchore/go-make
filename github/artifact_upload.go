@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/bmatcuk/doublestar/v4"
+
 	. "github.com/anchore/go-make"
 	"github.com/anchore/go-make/config"
 	"github.com/anchore/go-make/file"
@@ -46,7 +48,7 @@ func (a Api) UploadArtifactDir(baseDir string, opts UploadArtifactOption) (int64
 
 	artifactName := opts.ArtifactName
 	if artifactName == "" {
-		artifactName = filepath.Base(baseDir)
+		artifactName = filepath.Base(baseDir) + matrixSuffix()
 	}
 
 	files := listMatchingFiles(baseDir, &opts)
@@ -106,11 +108,9 @@ func listMatchingFiles(baseDir string, opts *UploadArtifactOption) []string {
 		opts.Glob = "**/*" // default to include all files in the baseDir
 	}
 	if opts.Glob != "" {
-		glob := opts.Glob
-		if !filepath.IsAbs(glob) {
-			glob = filepath.Join(baseDir, glob)
-		}
-		for _, f := range file.FindAll(glob) {
+		fs := os.DirFS(baseDir)
+		globbed := lang.Return(doublestar.Glob(fs, opts.Glob, doublestar.WithFilesOnly(), doublestar.WithNoFollow()))
+		for _, f := range globbed {
 			if !filepath.IsAbs(f) {
 				f = filepath.Join(baseDir, f)
 			}

@@ -30,7 +30,7 @@ func Test_UploadWorkflowArtifact(t *testing.T) {
 	api := NewClient()
 
 	_, err = api.UploadArtifactDir(tmp, UploadArtifactOption{
-		ArtifactName: "test-artifact-" + random(),
+		ArtifactName: "test-artifact" + MatrixSuffix,
 	})
 	require.NoError(t, err)
 }
@@ -48,7 +48,7 @@ func _Test_DownloadBranchArtifactDir(t *testing.T) {
 
 	api := NewClient()
 
-	err = api.DownloadBranchArtifactDir("main", "Validations", "test-artifact*", targetPath)
+	err = api.DownloadBranchArtifactDir("main", "Validations", "test-artifact"+MatrixSuffix, targetPath)
 	require.NoError(t, err)
 
 	require.Equal(t, "test-upload", file.Read(filepath.Join(tmp, "my-file.txt")))
@@ -59,7 +59,6 @@ func Test_UploadDownload(t *testing.T) {
 		t.Log("skipping in non-CI environment")
 		return
 	}
-	defer require.Test(t)
 
 	tests := []struct {
 		files    string
@@ -91,9 +90,11 @@ func Test_UploadDownload(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.files, func(t *testing.T) {
+			defer require.Test(t)
+
 			p := Payload() // tests run in workflow in github
 
-			tt.artifact += "-" + random()
+			tt.artifact += MatrixSuffix
 
 			api := NewClient()
 			artifactId, err := api.UploadArtifactDir("testdata", UploadArtifactOption{
@@ -107,6 +108,10 @@ func Test_UploadDownload(t *testing.T) {
 
 			err = api.DownloadArtifactDir(p.RunID, tt.artifact, tmpdir)
 			require.NoError(t, err)
+
+			file.InDir(tmpdir, func() {
+				file.LogWorkdir()
+			})
 
 			testdataFile := file.Read("testdata/pr_run_artifacts.json")
 			downloadedFile := file.Read(filepath.Join(tmpdir, "pr_run_artifacts.json"))
@@ -142,8 +147,6 @@ func Test_ensureActionsArtifactNpmPackageInstalled(t *testing.T) {
 }
 
 func Test_renderUploadFiles(t *testing.T) {
-	defer require.Test(t)
-
 	tests := []struct {
 		name     string
 		baseDir  string
@@ -182,6 +185,8 @@ func Test_renderUploadFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			defer require.Test(t)
+
 			baseDir, err := filepath.Abs(tt.baseDir)
 			require.NoError(t, err)
 			for i := range tt.expected {

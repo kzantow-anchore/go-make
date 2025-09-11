@@ -43,8 +43,9 @@ runs:
         script: |
           console.log(`all env keys: ${Object.keys(process.env).sort()}`)
           const fs = require('fs')
-          const env = { GITHUB_TOKEN: "${{github.token}}" }
+          const env = { GITHUB_TOKEN: "${{ github.token }}" }
           Object.keys(process.env).filter(k => k.startsWith("ACTIONS_")).forEach(k => { env[k] = process.env[k] })
+          env.MATRIX_JSON = `${{ matrix }}`
           const f = `${process.env.HOME||process.env.USERPROFILE}/.bootstrap_actions_env`
           console.log(`writing env to '${f}' with env keys: ${Object.keys(env).sort()}`)
           Object.entries(env).forEach(([k, v]) => { fs.appendFileSync(f, `${k}="${v.replaceAll("\\","\\\\").replaceAll('"','\\"').replaceAll("\n","\\n")}"\n`) })

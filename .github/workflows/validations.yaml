@@ -7,7 +7,8 @@ on:
     branches:
       - main
   schedule:
-    - cron: 0 0 * * * # run daily so we get notified of new versions causing issues
+    # run once per week so we always have an artifact for testing and get notified of new versions causing issues
+    - cron: 0 0 * * 0
 
 jobs:
   Static-Analysis:
@@ -48,3 +49,6 @@ jobs:
           cache-dependency-path: go.sum
 
       - run: make test
+        env:
+          RUNNER_OS: ${{ matrix.os }}
+          RUNNER_GO: ${{ matrix.go-version }}
