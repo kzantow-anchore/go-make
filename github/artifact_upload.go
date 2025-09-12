@@ -26,6 +26,7 @@ const (
 
 type UploadArtifactOption struct {
 	ArtifactName  string
+	Overwrite     bool
 	RetentionDays uint
 	Glob          string
 	Files         []string
@@ -49,6 +50,16 @@ func (a Api) UploadArtifactDir(baseDir string, opts UploadArtifactOption) (int64
 	artifactName := opts.ArtifactName
 	if artifactName == "" {
 		artifactName = filepath.Base(baseDir) + matrixSuffix()
+	}
+
+	if opts.Overwrite {
+		p := Payload()
+		existing := lang.Continue(a.ListArtifactsForWorkflowRun(p.RunID, artifactName))
+		if len(existing) > 0 {
+			for _, e := range existing {
+				log.Error(a.DeleteArtifact(e.ID))
+			}
+		}
 	}
 
 	files := listMatchingFiles(baseDir, &opts)
@@ -82,17 +93,12 @@ Promise.all([artifact.uploadArtifact(archiveName, files, baseDir, opts).then(({ 
 	process.exit(1)
 })])`,
 		run.Env(nodePathEnv, nodeModulesPath),
-		run.Args("--input-type=commonjs", os.ExpandEnv("--env-file="+envFile()), "--"),
+		run.Args("--input-type=commonjs", os.ExpandEnv("--env-file="+envFilePath()), "--"),
 		run.Args(artifactName, baseDir, strconv.Itoa(int(opts.RetentionDays))),
 		run.Args(files...),
 		run.Quiet())
 
 	return strconv.ParseInt(id, 10, 64)
-}
-
-// envFile is written by the boostrap action to make the required environment variables available to bash scripts, we have captured these in a JS action
-func envFile() string {
-	return filepath.Join(config.Env("HOME", config.Env("USERPROFILE", lang.Continue(os.UserHomeDir()))), ".bootstrap_actions_env")
 }
 
 func listMatchingFiles(baseDir string, opts *UploadArtifactOption) []string {

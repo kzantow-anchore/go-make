@@ -31,6 +31,16 @@ func Writer(writer io.Writer) Option {
 	}
 }
 
+func Delete(urlString string, options ...Option) (err error) {
+	_, err = Fetch(urlString, append(options,
+		func(opts *fetchOptions) error {
+			opts.req.Method = http.MethodDelete
+			return nil
+		},
+	)...)
+	return err
+}
+
 func Fetch(urlString string, options ...Option) (contents string, err error) {
 	u := lang.Return(url.Parse(urlString))
 

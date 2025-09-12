@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/bmatcuk/doublestar/v4"
 
@@ -74,20 +75,8 @@ func NewClient(params ...Param) Api {
 	return a
 }
 
-func authTokenFromEnvFile() string {
-	token := ""
-	f, err := os.Open(envFile())
-	if err != nil {
-		log.Info("unable to read env file: %v: %v", envFile(), err)
-	}
-	if f != nil {
-		defer lang.Close(f, envFile())
-		submatch := regexp.MustCompile(`GITHUB_TOKEN="([^"]+)"`).FindStringSubmatch(string(lang.Continue(io.ReadAll(f))))
-		if len(submatch) > 1 {
-			token = submatch[1]
-		}
-	}
-	return token
+func (a Api) DeleteArtifact(artifactID int64) error {
+	return fetch.Delete(a.BaseURL+fmt.Sprintf("/repos/%s/actions/artifacts/%v", a.Repo, artifactID), a.headers())
 }
 
 // ListWorkflowRuns returns the workflow runs for the given criteria
@@ -286,4 +275,39 @@ func ensureDir(dir string) error {
 	return lang.Catch(func() {
 		file.EnsureDir(filepath.Dir(dir))
 	})
+}
+
+// envFilePath returns the path to an env file written by the boostrap action to make the required environment variables available to bash scripts, we have captured these in a JS action
+func envFilePath() string {
+	return filepath.Join(config.Env("HOME", config.Env("USERPROFILE", lang.Continue(os.UserHomeDir()))), ".bootstrap_actions_env")
+}
+
+var envFile = sync.OnceValue(func() map[string]string {
+	p := envFilePath()
+	f, err := os.Open(p)
+	if err != nil {
+		log.Info("unable to read env file: %v: %v", p, err)
+	}
+	if f != nil {
+		defer lang.Close(f, p)
+		return readNameValuePairs(f)
+	}
+	return map[string]string{}
+})
+
+func readNameValuePairs(reader io.Reader) map[string]string {
+	out := map[string]string{}
+	re := regexp.MustCompile(`(?m)^([-_a-zA-Z0-9]+)="([^"]+)"$`)
+	contents := lang.Return(io.ReadAll(reader))
+	for _, submatch := range re.FindAllStringSubmatch(string(contents), -1) {
+		if len(submatch) > 2 {
+			out[submatch[1]] = submatch[2]
+		}
+	}
+	log.Debug("readNameValuePairs: %v", out)
+	return out
+}
+
+func authTokenFromEnvFile() string {
+	return envFile()["GITHUB_TOKEN"]
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/anchore/go-make/file"
@@ -153,6 +154,53 @@ func Test_nameMatches(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := nameMatches(tt.pattern, tt.testName)
 			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_readNameValuePairs(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected map[string]string
+	}{
+		{
+			name:     "empty",
+			input:    "",
+			expected: map[string]string{},
+		},
+		{
+			name:  "single",
+			input: `ONE_THING="ONE_VALUE"`,
+			expected: map[string]string{
+				"ONE_THING": "ONE_VALUE",
+			},
+		},
+		{
+			name: "multiple",
+			input: `ONE_THING="ONE_VALUE"
+SECOND_THING="SECOND_VALUE"`,
+			expected: map[string]string{
+				"ONE_THING":    "ONE_VALUE",
+				"SECOND_THING": "SECOND_VALUE",
+			},
+		},
+		{
+			name: "multiline",
+			input: `ONE_THING="ONE_
+MULTILINE
+VALUE"
+SECOND_THING="SECOND_VALUE"`,
+			expected: map[string]string{
+				"ONE_THING":    "ONE_\nMULTILINE\nVALUE",
+				"SECOND_THING": "SECOND_VALUE",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := readNameValuePairs(strings.NewReader(tt.input))
+			require.Equal(t, tt.expected, got)
 		})
 	}
 }

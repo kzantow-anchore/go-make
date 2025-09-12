@@ -16,7 +16,7 @@ var (
 )
 
 func matrixSuffix() string {
-	matrixJSON := config.Env("MATRIX_JSON", "")
+	matrixJSON := config.Env("MATRIX_JSON", envFile()["MATRIX_JSON"])
 	if matrixJSON == "" {
 		return ""
 	}
