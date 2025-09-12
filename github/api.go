@@ -9,7 +9,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 
@@ -277,36 +276,20 @@ func ensureDir(dir string) error {
 	})
 }
 
-// envFilePath returns the path to an env file written by the boostrap action to make the required environment variables available to bash scripts, we have captured these in a JS action
-func envFilePath() string {
-	return filepath.Join(config.Env("HOME", config.Env("USERPROFILE", lang.Continue(os.UserHomeDir()))), ".bootstrap_actions_env")
-}
-
 var envFile = sync.OnceValue(func() map[string]string {
-	p := envFilePath()
+	p := filepath.Join(config.Env("HOME", config.Env("USERPROFILE", lang.Continue(os.UserHomeDir()))), ".bootstrap_actions_env")
 	f, err := os.Open(p)
 	if err != nil {
 		log.Info("unable to read env file: %v: %v", p, err)
 	}
+	out := map[string]string{}
 	if f != nil {
 		defer lang.Close(f, p)
-		return readNameValuePairs(f)
+		log.Error(json.NewDecoder(f).Decode(&out))
 	}
-	return map[string]string{}
-})
-
-func readNameValuePairs(reader io.Reader) map[string]string {
-	out := map[string]string{}
-	re := regexp.MustCompile(`(?m)^([-_a-zA-Z0-9]+)="([^"]+)"$`)
-	contents := lang.Return(io.ReadAll(reader))
-	for _, submatch := range re.FindAllStringSubmatch(string(contents), -1) {
-		if len(submatch) > 2 {
-			out[submatch[1]] = submatch[2]
-		}
-	}
-	log.Debug("readNameValuePairs: %v", out)
+	log.Debug("read env file %v: %v", p, out)
 	return out
-}
+})
 
 func authTokenFromEnvFile() string {
 	return envFile()["GITHUB_TOKEN"]

@@ -69,6 +69,11 @@ func (a Api) UploadArtifactDir(baseDir string, opts UploadArtifactOption) (int64
 
 	log.Debug("uploading dir: %s name: %s with files: %v", baseDir, artifactName, files)
 
+	var envs []run.Option
+	for k, v := range envFile() {
+		envs = append(envs, run.Env(k, v))
+	}
+
 	id := node.Run(`
 const { DefaultArtifactClient } = require('@actions/artifact')
 const artifact = new DefaultArtifactClient()
@@ -93,7 +98,8 @@ Promise.all([artifact.uploadArtifact(archiveName, files, baseDir, opts).then(({ 
 	process.exit(1)
 })])`,
 		run.Env(nodePathEnv, nodeModulesPath),
-		run.Args("--input-type=commonjs", os.ExpandEnv("--env-file="+envFilePath()), "--"),
+		run.Options(envs...),
+		run.Args("--input-type=commonjs", "--"),
 		run.Args(artifactName, baseDir, strconv.Itoa(int(opts.RetentionDays))),
 		run.Args(files...),
 		run.Quiet())

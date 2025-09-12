@@ -49,7 +49,7 @@ runs:
           Object.keys(process.env).filter(k => k.startsWith("ACTIONS_")).forEach(k => { env[k] = process.env[k] })
           const f = `${process.env.HOME||process.env.USERPROFILE}/.bootstrap_actions_env`
           console.log(`writing env to '${f}' with env keys: ${Object.keys(env).sort()}`)
-          Object.entries(env).forEach(([k, v]) => { fs.appendFileSync(f, `${k}="${v.replaceAll("\\","\\\\").replaceAll('"','\\"').replaceAll("\n","\\n")}"\n`) })
+          fs.writeFileSync(f, JSON.stringify(env))
       env:
         GITHUB_TOKEN: ${{ github.token }}
         MATRIX_JSON: ${{ toJSON(matrix) }}
