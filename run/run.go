@@ -216,7 +216,7 @@ func runCommand(cmd string, opts ...Option) (int, error) {
 		}
 	}
 
-	args := c.Args[1:] // exec.Command sets the cmd to Args[0]
+	args := shortenedArgs(c.Args[1:]) // exec.Command sets the cmd to Args[0]
 
 	logFunc := log.Info
 	if cfg.quiet {
@@ -265,6 +265,18 @@ func runCommand(cmd string, opts ...Option) (int, error) {
 		}
 	}
 	return exitCode, nil
+}
+
+func shortenedArgs(args []string) []string {
+	const maxLen = 16
+	var out []string
+	for _, arg := range args {
+		if len(out) > maxLen {
+			arg = arg[:maxLen]
+		}
+		out = append(out, arg)
+	}
+	return out
 }
 
 func skipEnvVar(s string) bool {
