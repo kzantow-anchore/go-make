@@ -31,6 +31,7 @@ func Test_UploadWorkflowArtifact(t *testing.T) {
 
 	_, err = api.UploadArtifactDir(tmp, UploadArtifactOption{
 		ArtifactName: "test-artifact" + MatrixSuffix,
+		Overwrite:    true,
 	})
 	require.NoError(t, err)
 }
@@ -100,6 +101,7 @@ func Test_UploadDownload(t *testing.T) {
 			artifactId, err := api.UploadArtifactDir("testdata", UploadArtifactOption{
 				ArtifactName: tt.artifact,
 				Glob:         tt.files,
+				Overwrite:    true,
 			})
 			require.NoError(t, err)
 			require.True(t, artifactId != 0)
