@@ -75,7 +75,6 @@ func envLoad(objects ...any) {
 	}
 }
 
-//nolint:funlen,gocognit
 func envLoadVal(val reflect.Value) {
 	switch val.Kind() {
 	case reflect.Pointer, reflect.Interface:

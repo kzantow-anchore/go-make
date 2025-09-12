@@ -22,7 +22,7 @@ func Test_Command(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		testapp += ".exe"
 	}
-	_, err := runCommand("go", Args("build", "-C", filepath.Join("testdata", "testapp"), "-o", testapp, "."))
+	_, err := Command("go", Args("build", "-C", filepath.Join("testdata", "testapp"), "-o", testapp, "."))
 	require.NoError(t, err)
 
 	tests := []struct {

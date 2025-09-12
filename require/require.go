@@ -11,14 +11,14 @@ import (
 func Test(t *testing.T) {
 	t.Helper()
 	if r := recover(); r != nil {
-		t.Fatalf("failed due: %v", r)
+		t.Fatalf("TEST FAILED: %v", r)
 	}
 }
 
 func True(t *testing.T, check bool) {
 	t.Helper()
 	if !check {
-		t.Fatalf("expected true value")
+		t.Fatalf("TEST FAILED: expected true value")
 	}
 }
 

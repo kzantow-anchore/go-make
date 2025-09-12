@@ -49,7 +49,77 @@ func Command(cmd string, opts ...Option) (string, error) {
 		return nil
 	})
 
-	exitCode, err := runCommand(cmd, opts...)
+	// create the command, this will look it up based on path:
+	c := exec.CommandContext(Context(), cmd)
+
+	env := os.Environ()
+	var dropped []string
+	for i := 0; i < len(env); i++ {
+		nameValue := strings.SplitN(env[i], "=", 2)
+		if skipEnvVar(nameValue[0]) {
+			dropped = append(dropped, nameValue[0])
+			continue
+		}
+		log.Trace(color.Grey("adding environment entry: %v", env[i]))
+		c.Env = append(c.Env, env[i])
+	}
+
+	for _, e := range dropped {
+		log.Trace(color.Grey("dropped environment entry: %v", e))
+	}
+
+	cfg := runConfig{}
+	ctx := context.WithValue(Context(), runConfig{}, &cfg)
+
+	// finally, apply all the options to modify the command
+	for _, opt := range opts {
+		err := opt(ctx, c)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	args := shortenedArgs(c.Args[1:]) // exec.Command sets the cmd to Args[0]
+
+	logFunc := log.Info
+	if cfg.quiet {
+		logFunc = log.Debug
+	}
+	logFunc("$ %v %v", displayPath(cmd), strings.Join(args, " "))
+
+	// print out c.Env -- GOROOT vs GOBIN
+	log.Trace("ENV: %v", c.Env)
+
+	// forward process end signals
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM) // , syscall.SIGQUIT)
+	go func() {
+		defer signal.Stop(signals)
+		for sig := range signals {
+			// SIGABRT is sent when the process ends normally, so we don't wait further
+			if sig == syscall.SIGABRT {
+				break
+			}
+			if c.Process != nil {
+				log.Error(c.Process.Signal(sig))
+			}
+		}
+	}()
+
+	// WaitDelay specifies the time to wait after the process completes before continuing
+	c.WaitDelay = 11 * time.Second
+	osExecOpts(c)
+
+	// execute
+	err := c.Run()
+
+	// this will cause the signal listener to proceed and stop waiting on other signals
+	signals <- syscall.SIGABRT
+
+	exitCode := 0
+	if c.ProcessState != nil {
+		exitCode = c.ProcessState.ExitCode()
+	}
 	if err != nil {
 		fullStdOut := ""
 		if stdout.Len() > 0 {
@@ -61,6 +131,12 @@ func Command(cmd string, opts ...Option) (string, error) {
 		err = lang.NewStackTraceError(fmt.Errorf("error executing: '%s %s': %w", cmd, printArgs(opts), err)).
 			WithExitCode(exitCode).
 			WithLog(fullStdOut)
+	}
+	if err != nil || exitCode > 0 {
+		if cfg.noFail {
+			log.Debug("error executing: '%v %v' exit code: %v: %v", displayPath(cmd), strings.Join(args, " "), exitCode, err)
+			err = nil
+		}
 	}
 
 	return strings.TrimSpace(stdout.String()), err
@@ -182,89 +258,6 @@ func LDFlags(flags ...string) Option {
 		cmd.Args = append(cmd.Args, "-ldflags", strings.Join(flags, " "))
 		return nil
 	}
-}
-
-// runCommand executes the given command, returning any error information
-func runCommand(cmd string, opts ...Option) (int, error) {
-	// create the command, this will look it up based on path:
-	c := exec.CommandContext(Context(), cmd)
-
-	env := os.Environ()
-	var dropped []string
-	for i := 0; i < len(env); i++ {
-		nameValue := strings.SplitN(env[i], "=", 2)
-		if skipEnvVar(nameValue[0]) {
-			dropped = append(dropped, nameValue[0])
-			continue
-		}
-		log.Trace(color.Grey("adding environment entry: %v", env[i]))
-		c.Env = append(c.Env, env[i])
-	}
-
-	for _, e := range dropped {
-		log.Trace(color.Grey("dropped environment entry: %v", e))
-	}
-
-	cfg := runConfig{}
-	ctx := context.WithValue(Context(), runConfig{}, &cfg)
-
-	// finally, apply all the options to modify the command
-	for _, opt := range opts {
-		err := opt(ctx, c)
-		if err != nil {
-			return 0, err
-		}
-	}
-
-	args := shortenedArgs(c.Args[1:]) // exec.Command sets the cmd to Args[0]
-
-	logFunc := log.Info
-	if cfg.quiet {
-		logFunc = log.Debug
-	}
-	logFunc("$ %v %v", displayPath(cmd), strings.Join(args, " "))
-
-	// print out c.Env -- GOROOT vs GOBIN
-	log.Trace("ENV: %v", c.Env)
-
-	// forward process end signals
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt, syscall.SIGTERM) // , syscall.SIGQUIT)
-	go func() {
-		defer signal.Stop(signals)
-		for sig := range signals {
-			// SIGABRT is sent when the process ends normally, so we don't wait further
-			if sig == syscall.SIGABRT {
-				break
-			}
-			if c.Process != nil {
-				log.Error(c.Process.Signal(sig))
-			}
-		}
-	}()
-
-	// WaitDelay specifies the time to wait after the process completes before continuing
-	c.WaitDelay = 11 * time.Second
-	osExecOpts(c)
-
-	// execute
-	err := c.Run()
-
-	// this will cause the signal listener to proceed and stop waiting on other signals
-	signals <- syscall.SIGABRT
-
-	exitCode := 0
-	if c.ProcessState != nil {
-		exitCode = c.ProcessState.ExitCode()
-	}
-	if err != nil || exitCode > 0 {
-		if cfg.noFail {
-			log.Debug("error executing: '%v %v' exit code: %v: %v", displayPath(cmd), strings.Join(args, " "), exitCode, err)
-		} else {
-			return exitCode, err
-		}
-	}
-	return exitCode, nil
 }
 
 func shortenedArgs(args []string) []string {
