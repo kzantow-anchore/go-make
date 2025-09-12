@@ -68,13 +68,14 @@ func Test_UploadDownload(t *testing.T) {
 	}{
 		{
 			files:    "pr_run_artifacts.json",
-			artifact: "my-artifact-name",
+			artifact: "pr-run-artifacts-1" + MatrixSuffix,
 			expect: []string{
 				"pr_run_artifacts.json",
 			},
 		},
 		{
-			files: "**/*_artifacts.json",
+			files:    "**/*_artifacts.json",
+			artifact: "pr-run-artifacts-2" + MatrixSuffix,
 			expect: []string{
 				"pr_run_artifacts.json",
 			},
@@ -95,8 +96,6 @@ func Test_UploadDownload(t *testing.T) {
 
 			p := Payload() // tests run in workflow in github
 
-			tt.artifact += MatrixSuffix
-
 			api := NewClient()
 			artifactId, err := api.UploadArtifactDir("testdata", UploadArtifactOption{
 				ArtifactName: tt.artifact,
@@ -107,6 +106,10 @@ func Test_UploadDownload(t *testing.T) {
 			require.True(t, artifactId != 0)
 
 			tmpdir := t.TempDir()
+
+			if tt.artifact == "" {
+				tt.artifact = "testdata" + MatrixSuffix
+			}
 
 			err = api.DownloadArtifactDir(p.RunID, tt.artifact, tmpdir)
 			require.NoError(t, err)

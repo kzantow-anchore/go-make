@@ -37,7 +37,12 @@ func stringify(value any) string {
 	out := ""
 	pat := regexp.MustCompile("[^-a-z0-9_]+")
 	switch value := value.(type) {
-	case string, int, float64, bool:
+	case string:
+		value = pat.ReplaceAllString(value, "-")
+		if value != "" {
+			out = "-" + strings.ToLower(value)
+		}
+	case int, float64, bool:
 		out = fmt.Sprintf("-%v", value)
 	case []any:
 		for _, v := range value {
@@ -45,7 +50,11 @@ func stringify(value any) string {
 		}
 	case map[string]any:
 		for _, k := range slices.Sorted(maps.Keys(value)) {
-			out += pat.ReplaceAllString(strings.ToLower(fmt.Sprintf("-%v%v", k, stringify(value[k]))), "-")
+			v := stringify(value[k])
+			if v == "" {
+				continue
+			}
+			out += "-" + pat.ReplaceAllString(strings.ToLower(k), "-") + v
 		}
 	}
 	return out

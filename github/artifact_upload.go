@@ -49,7 +49,7 @@ func (a Api) UploadArtifactDir(baseDir string, opts UploadArtifactOption) (int64
 
 	artifactName := opts.ArtifactName
 	if artifactName == "" {
-		artifactName = filepath.Base(baseDir) + matrixSuffix()
+		artifactName = filepath.Base(baseDir) + MatrixSuffix
 	}
 
 	if opts.Overwrite {

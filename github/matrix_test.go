@@ -22,8 +22,17 @@ func Test_matrixSuffix(t *testing.T) {
 			expected: "-arch-x64-os-windows",
 			matrix: map[string]any{
 				"platform": map[string]any{
-					"os":   "windows",
+					"oS":   "windows",
 					"arch": "x64",
+				},
+			},
+		},
+		{
+			expected: "-arch-x64",
+			matrix: map[string]any{
+				"platform": map[string]any{
+					"os":   "",
+					"arCH": "x64",
 				},
 			},
 		},
