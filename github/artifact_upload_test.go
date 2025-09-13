@@ -109,8 +109,15 @@ func Test_UploadDownload(t *testing.T) {
 			}
 
 			if config.Windows {
-				log.Debug("sleeping on Windows...")
-				time.Sleep(2 * time.Second)
+				log.Debug("waiting on Windows...")
+				const iterations = 10
+				for i := 0; i < iterations; i++ {
+					artifacts, _ := api.ListArtifactsForWorkflowRun(p.RunID, tt.artifact)
+					if len(artifacts) > 0 {
+						break
+					}
+					time.Sleep(5 * time.Second)
+				}
 			}
 
 			tmpdir := t.TempDir()
