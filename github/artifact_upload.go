@@ -3,7 +3,6 @@ package github
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -112,7 +111,7 @@ func listMatchingFiles(baseDir string, opts *UploadArtifactOption) []string {
 	baseDir = lang.Return(filepath.Abs(baseDir))
 	for _, f := range opts.Files {
 		if !filepath.IsAbs(f) {
-			f = path.Join(baseDir, f)
+			f = filepath.Join(baseDir, f)
 		}
 		out = append(out, f)
 	}
@@ -124,7 +123,7 @@ func listMatchingFiles(baseDir string, opts *UploadArtifactOption) []string {
 		globbed := lang.Return(doublestar.Glob(fs, opts.Glob, doublestar.WithFilesOnly(), doublestar.WithNoFollow()))
 		for _, f := range globbed {
 			if !filepath.IsAbs(f) {
-				f = filepath.Join(baseDir, f)
+				f = filepath.Join(baseDir, filepath.FromSlash(f))
 			}
 			out = append(out, f)
 		}

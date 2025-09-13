@@ -195,7 +195,7 @@ func Test_renderUploadFiles(t *testing.T) {
 			baseDir, err := filepath.Abs(tt.baseDir)
 			require.NoError(t, err)
 			for i := range tt.expected {
-				tt.expected[i] = filepath.Join(baseDir, tt.expected[i])
+				tt.expected[i] = filepath.Join(baseDir, filepath.FromSlash(tt.expected[i]))
 			}
 
 			files := listMatchingFiles(tt.baseDir, &tt.options)
