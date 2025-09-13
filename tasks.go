@@ -54,6 +54,7 @@ func (t Task) RunOn(tasks ...string) Task {
 // Makefile will execute the provided tasks much like make with dependencies,
 // as per the Task behavior declared above
 func Makefile(tasks ...Task) {
+	defer config.DoExit()
 	if config.Debug {
 		run.PeriodicStackTraces(run.Backoff(30 * time.Second))
 	}

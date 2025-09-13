@@ -27,6 +27,8 @@ var (
 
 	// CI indicates running in a CI environment
 	CI = false
+	// Windows indicates running on Windows
+	Windows = runtime.GOOS == "windows"
 	// Cleanup whether to remove temporary files and downloads
 	Cleanup = true
 )

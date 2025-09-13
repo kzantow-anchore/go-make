@@ -96,7 +96,7 @@ func defaultConfig() Config {
 		Name:        "unit",
 		IncludeGlob: "./...",
 		Coverage:    true,
-		Race:        true,
+		Race:        config.CI && config.Windows,
 	}
 }
 

@@ -103,6 +103,8 @@ Promise.all([artifact.uploadArtifact(archiveName, files, baseDir, opts).then(({ 
 		run.Args(files...),
 		run.Quiet())
 
+	log.Debug("uploaded artifact '%' with id: %s", artifactName, id)
+
 	return strconv.ParseInt(id, 10, 64)
 }
 

@@ -1,12 +1,11 @@
 package github
 
 import (
-	"crypto/rand"
-	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
 	"testing"
+	"time"
 
 	. "github.com/anchore/go-make"
 	"github.com/anchore/go-make/config"
@@ -100,16 +99,21 @@ func Test_UploadDownload(t *testing.T) {
 			artifactId, err := api.UploadArtifactDir("testdata", UploadArtifactOption{
 				ArtifactName: tt.artifact,
 				Glob:         tt.files,
-				Overwrite:    true,
+				Overwrite:    false,
 			})
 			require.NoError(t, err)
 			require.True(t, artifactId != 0)
 
-			tmpdir := t.TempDir()
-
 			if tt.artifact == "" {
 				tt.artifact = "testdata" + MatrixSuffix
 			}
+
+			if config.Windows {
+				log.Debug("sleeping on Windows...")
+				time.Sleep(2 * time.Second)
+			}
+
+			tmpdir := t.TempDir()
 
 			err = api.DownloadArtifactDir(p.RunID, tt.artifact, tmpdir)
 			require.NoError(t, err)
@@ -147,7 +151,7 @@ func Test_ensureActionsArtifactNpmPackageInstalled(t *testing.T) {
 	ensureActionsArtifactInstalled(testDir)
 
 	file.InDir(testDir, func() {
-		log.Info("actions/artifact out: %s", Run("npm list -g @actions/artifact", run.NoFail()))
+		log.Info("actions/artifact out: %s", Run("npm list @actions/artifact", run.NoFail()))
 	})
 }
 
@@ -202,11 +206,4 @@ func Test_renderUploadFiles(t *testing.T) {
 			require.EqualElements(t, tt.expected, files)
 		})
 	}
-}
-
-func random() string {
-	b := make([]byte, 16)
-	_, err := rand.Read(b)
-	log.Error(err)
-	return fmt.Sprintf("%x", b)
 }

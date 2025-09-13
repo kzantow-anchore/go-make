@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 
@@ -120,7 +119,7 @@ func Install(cmd string) string {
 	if !strings.Contains(out.String(), "already installed") {
 		// check if binny has given us an executable without .exe on windows and copy it, if so
 		nonExe := filepath.Join(toolDir, cmd)
-		if runtime.GOOS == "windows" && nonExe != toolPath && file.Exists(nonExe) {
+		if config.Windows && nonExe != toolPath && file.Exists(nonExe) {
 			log.Error(lang.Catch(func() {
 				// older verions of binny do not create .exe files on windows
 				// TODO: fix binny to handle windows executables properly, see the fix-freebsd branch

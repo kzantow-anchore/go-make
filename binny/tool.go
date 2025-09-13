@@ -2,7 +2,6 @@ package binny
 
 import (
 	"path/filepath"
-	"runtime"
 
 	"github.com/anchore/go-make/config"
 	"github.com/anchore/go-make/lang"
@@ -16,7 +15,7 @@ func InstallAll() {
 
 func ToolPath(toolName string) string {
 	toolPath := toolName
-	if runtime.GOOS == "windows" {
+	if config.Windows {
 		toolPath += ".exe"
 	}
 	p := filepath.Join(template.Render(config.ToolDir), toolPath)

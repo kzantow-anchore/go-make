@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/anchore/go-make/config"
 	. "github.com/anchore/go-make/lang"
 	"github.com/anchore/go-make/log"
 	"github.com/anchore/go-make/require"
@@ -19,7 +19,7 @@ func Test_Command(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	testapp := filepath.Join(tmpDir, "testapp")
-	if runtime.GOOS == "windows" {
+	if config.Windows {
 		testapp += ".exe"
 	}
 	_, err := Command("go", Args("build", "-C", filepath.Join("testdata", "testapp"), "-o", testapp, "."))

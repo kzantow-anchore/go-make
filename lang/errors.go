@@ -64,14 +64,23 @@ func HandleErrors() {
 		return
 	case *StackTraceError:
 		errText := strings.TrimSpace(fmt.Sprintf("ERROR: %v", v.Err))
-		log.Info("\n" + color.Red(errText) + "\n\n" + strings.TrimSpace(v.Log) + "\n\n" + color.Grey("\n\n"+strings.Join(v.Stack, "\n")))
+		log.Info("\n" + formatError(errText) + "\n\n" + strings.TrimSpace(v.Log) + "\n\n" + color.Grey("\n\n"+strings.Join(v.Stack, "\n")))
 		if v.ExitCode > 0 {
 			os.Exit(v.ExitCode)
 		}
 	default:
-		log.Info(color.Red("ERROR: %v", v) + color.Grey("\n"+strings.Join(stackTraceLines(), "\n")))
+		log.Info(formatError("ERROR: %v", v) + color.Grey("\n"+strings.Join(stackTraceLines(), "\n")))
 	}
 	os.Exit(1)
+}
+
+func formatError(format string, args ...any) string {
+	line := "\n"
+	if config.Windows {
+		line = "\r\n"
+	}
+	format = line + line + " " + format + " " + line
+	return color.BgRed(color.White(format+" ", args...))
 }
 
 // Catch handles panic values and returns any error caught
