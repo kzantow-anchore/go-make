@@ -119,7 +119,7 @@ func Test_UploadDownload(t *testing.T) {
 			if config.Windows {
 				const waitTime = 10 * time.Second
 				const totalTime = 2 * time.Minute
-				log.Info("waiting on Windows for up to %s minutes for artifact to be available...", totalTime/time.Minute)
+				log.Info("waiting on Windows for up to %v minutes for artifact to be available...", totalTime/time.Minute)
 				for i := time.Duration(0); i < totalTime; i += waitTime {
 					artifacts, _ := api.ListArtifactsForWorkflowRun(p.RunID, tt.artifact)
 					if len(artifacts) > 0 {
