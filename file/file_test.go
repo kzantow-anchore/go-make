@@ -152,3 +152,68 @@ func Test_FindAll(t *testing.T) {
 		})
 	}
 }
+
+func Test_ChmodAll_SingleFile(t *testing.T) {
+	tmp := t.TempDir()
+	testFile := filepath.Join(tmp, "test.txt")
+	require.NoError(t, os.WriteFile(testFile, []byte("test"), 0o600))
+
+	err := file.ChmodAll(testFile, 0o755)
+	require.NoError(t, err)
+
+	stat := lang.Return(os.Stat(testFile))
+	require.Equal(t, os.FileMode(0o755), stat.Mode().Perm())
+}
+
+func Test_ChmodAll_DirectoryWithNestedFiles(t *testing.T) {
+	tmp := t.TempDir()
+	subdir := filepath.Join(tmp, "subdir")
+	require.NoError(t, os.Mkdir(subdir, 0o700))
+
+	file1 := filepath.Join(tmp, "file1.txt")
+	file2 := filepath.Join(subdir, "file2.txt")
+	require.NoError(t, os.WriteFile(file1, []byte("content1"), 0o600))
+	require.NoError(t, os.WriteFile(file2, []byte("content2"), 0o600))
+
+	err := file.ChmodAll(tmp, 0o755)
+	require.NoError(t, err)
+
+	// Check directory permissions
+	stat := lang.Return(os.Stat(tmp))
+	require.Equal(t, os.FileMode(0o755)|os.ModeDir, stat.Mode())
+
+	// Check subdirectory permissions
+	stat = lang.Return(os.Stat(subdir))
+	require.Equal(t, os.FileMode(0o755)|os.ModeDir, stat.Mode())
+
+	// Check file permissions
+	stat = lang.Return(os.Stat(file1))
+	require.Equal(t, os.FileMode(0o755), stat.Mode().Perm())
+
+	stat = lang.Return(os.Stat(file2))
+	require.Equal(t, os.FileMode(0o755), stat.Mode().Perm())
+}
+
+func Test_ChmodAll_DeeplyNestedStructure(t *testing.T) {
+	tmp := t.TempDir()
+	dir1 := filepath.Join(tmp, "dir1")
+	dir2 := filepath.Join(dir1, "dir2")
+	dir3 := filepath.Join(dir2, "dir3")
+	require.NoError(t, os.MkdirAll(dir3, 0o700))
+
+	deepFile := filepath.Join(dir3, "deep.txt")
+	require.NoError(t, os.WriteFile(deepFile, []byte("deep content"), 0o600))
+
+	err := file.ChmodAll(tmp, 0o755)
+	require.NoError(t, err)
+
+	// Check all directories have correct permissions
+	for _, dir := range []string{tmp, dir1, dir2, dir3} {
+		stat := lang.Return(os.Stat(dir))
+		require.Equal(t, os.FileMode(0o755)|os.ModeDir, stat.Mode())
+	}
+
+	// Check file has correct permissions
+	stat := lang.Return(os.Stat(deepFile))
+	require.Equal(t, os.FileMode(0o755), stat.Mode().Perm())
+}

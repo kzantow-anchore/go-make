@@ -6,12 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/anchore/go-make/config"
 	"github.com/anchore/go-make/lang"
 	"github.com/anchore/go-make/log"
 )
 
+// Ls returns an ls-like string listing the contents of the given directory
 func Ls(dir string) string {
 	dir = lang.Return(filepath.Abs(dir))
 	entries := lang.Return(os.ReadDir(dir))
@@ -19,9 +21,29 @@ func Ls(dir string) string {
 	buf := bytes.Buffer{}
 	for _, f := range entries {
 		s := lang.Return(os.Stat(filepath.Join(dir, f.Name())))
-		_, _ = fmt.Fprintf(&buf, "%v %8v %v\n", s.Mode(), HumanizeBytes(s.Size()), f.Name())
+		uid := -1
+		gid := -1
+		if stat, ok := s.Sys().(*syscall.Stat_t); ok {
+			uid = int(stat.Uid)
+			gid = int(stat.Gid)
+		}
+		_, _ = fmt.Fprintf(&buf, "%v %4v %4v %8v %v\n", s.Mode(), uid, gid, HumanizeBytes(s.Size()), f.Name())
 	}
 	return buf.String()
+}
+
+// LsAll returns an ls-like string listing the contents of the given directory and subdirectories
+func LsAll(dir string) string {
+	out := Ls(dir)
+	entries := lang.Return(os.ReadDir(dir))
+	for _, f := range entries {
+		if f.IsDir() {
+			subDir := filepath.Join(dir, f.Name())
+			out += "\n\n -- " + subDir + ":"
+			out += "\n" + LsAll(subDir)
+		}
+	}
+	return out
 }
 
 // LogWorkdir logs an ls of the current working directory

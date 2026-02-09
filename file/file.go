@@ -171,6 +171,33 @@ func FindParent(dir string, glob string) string {
 	}
 }
 
+// ChmodAll runs chmod recursively on the provided directory
+func ChmodAll(dir string, mod os.FileMode) error {
+	var errs []error
+	if IsDir(dir) {
+		mod |= os.ModeDir
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			f := filepath.Join(dir, entry.Name())
+			if err = ChmodAll(f, mod); err != nil {
+				if unwrap, ok := err.(interface{ Unwrap() []error }); ok {
+					errs = append(errs, unwrap.Unwrap()...)
+				} else {
+					errs = append(errs, err)
+				}
+			}
+		}
+	}
+	err := os.Chmod(dir, mod)
+	if err != nil {
+		errs = append(errs, err)
+	}
+	return errors.Join(errs...)
+}
+
 // Read reads the file and returns the contents as a string
 func Read(file string) string {
 	b, err := os.ReadFile(file)
